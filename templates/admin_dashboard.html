@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - School Management System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        .sidebar { width: 280px; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); color: white; position: fixed; height: 100vh; overflow-y: auto; }
+        .sidebar-header { padding: 25px 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-header h3 { margin: 10px 0 5px; font-size: 18px; }
+        .sidebar-nav { padding: 20px 0; }
+        .sidebar-nav a { display: block; padding: 12px 25px; color: rgba(255,255,255,0.8); text-decoration: none; transition: all 0.3s; cursor: pointer; }
+        .sidebar-nav a:hover { background: rgba(255,255,255,0.1); padding-left: 30px; }
+        .sidebar-nav a.active { background: #3498db; color: white; }
+        .main-content { flex: 1; margin-left: 280px; padding: 20px; margin-bottom: 40px; }
+        .top-bar { background: white; padding: 15px 25px; border-radius: 10px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .card { background: white; border-radius: 10px; padding: 25px; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; transition: all 0.3s; text-decoration: none; display: inline-block; text-align: center; }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-info { background: #1abc9c; color: white; }
+        .btn-edit { background: #f39c12; color: white; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; font-weight: bold; color: #333; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+        .search-box { padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 250px; margin-right: 10px; margin-bottom: 15px; }
+        .marquee-bottom { position: fixed; bottom: 0; left: 0; right: 0; background: #2c3e50; color: white; padding: 8px; text-align: center; font-size: 12px; z-index: 1000; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }
+        .stat-card .number { font-size: 36px; font-weight: bold; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 500px; max-width: 90%; max-height: 80%; overflow-y: auto; }
+        .close-modal { font-size: 28px; cursor: pointer; color: #999; float: right; }
+        .logout-btn { background: #e74c3c; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+        .edit-btn, .delete-btn { padding: 5px 10px; margin: 0 2px; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; }
+        .edit-btn { background: #f39c12; color: white; }
+        .delete-btn { background: #e74c3c; color: white; }
+        .submission-card { background: #f8f9fa; border-left: 4px solid #f39c12; padding: 15px; margin-bottom: 15px; border-radius: 8px; }
+        .status-badge { padding: 3px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
+        .status-pending { background: #f39c12; color: white; }
+        .status-confirmed { background: #27ae60; color: white; }
+        .grade-badge { display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; }
+        .grade-excellent { background: #27ae60; color: white; }
+        .grade-very-good { background: #2ecc71; color: white; }
+        .grade-good { background: #f39c12; color: white; }
+        .grade-credit { background: #3498db; color: white; }
+        .grade-fail { background: #e74c3c; color: white; }
+        .student-report-card { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; }
+        .student-report-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #f0f8ff; }
+        @media (max-width: 768px) { .sidebar { width: 80px; } .sidebar-header h3, .sidebar-nav a span { display: none; } .main-content { margin-left: 80px; } }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div style="font-size: 40px;">🏫</div>
+                <h3 id="schoolNameSidebar">School Management</h3>
+                <div class="school-name-top" id="schoolLocationSidebar"></div>
+            </div>
+            <div class="sidebar-nav">
+                <a class="active" onclick="showTab('dashboard')">📊 Dashboard</a>
+                <a onclick="showTab('school')">🏢 School Settings</a>
+                <a onclick="showTab('teachers')">👨‍🏫 Teachers</a>
+                <a onclick="showTab('students')">👨‍🎓 Students</a>
+                <a onclick="showTab('classes')">📚 Classes</a>
+                <a onclick="showTab('submissions')">📮 Pending Submissions</a>
+                <a onclick="showTab('lockunlock')">🔒 Lock/Unlock Marks</a>
+                <a onclick="showTab('examverification')">📑 Exam Verification</a>
+                <a onclick="showTab('reports')">📄 Print Reports</a>
+                <!-- Add this inside the sidebar navigation -->
+<a onclick="showTab('holiday')">🎄 Holiday Greetings</a>
+<a onclick="showTab('announcements')">📢 Announcements</a>
+
+<!-- Add this as a new tab content -->
+<!-- HOLIDAY GREETINGS TAB -->
+<div id="holiday" class="tab-content">
+    <div class="card">
+        <h3><i class="fas fa-gift"></i> Holiday Greetings Manager</h3>
+        
+        <div class="stats-grid" style="margin-bottom: 20px;">
+            <div class="stat-card" style="background: linear-gradient(135deg, #ff6b6b, #c92a2a);">
+                <h3 style="color: white;">Christmas</h3>
+                <button class="btn" onclick="activateHoliday('Merry Christmas')" style="background: white; color: #c92a2a;">🎄 Activate</button>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #fcc419, #f59f00);">
+                <h3 style="color: white;">New Year</h3>
+                <button class="btn" onclick="activateHoliday('Happy New Year')" style="background: white; color: #f59f00;">🎊 Activate</button>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #ff8787, #fa5252);">
+                <h3 style="color: white;">Easter</h3>
+                <button class="btn" onclick="activateHoliday('Happy Easter')" style="background: white; color: #fa5252;">🐰 Activate</button>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Custom Holiday Message</label>
+            <textarea id="customHolidayMessage" rows="3" class="form-control" placeholder="Enter your custom holiday message..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Upload Holiday Image (optional)</label>
+            <input type="file" id="holidayImage" accept="image/*">
+        </div>
+        
+        <div class="form-group">
+            <label>Animation Style</label>
+            <select id="animationStyle" class="form-control">
+                <option value="snow">Snowflakes (Christmas)</option>
+                <option value="fireworks">Fireworks (New Year)</option>
+                <option value="easter">Easter Eggs (Easter)</option>
+                <option value="balloons">Balloons (Birthday)</option>
+            </select>
+        </div>
+        
+        <button class="btn btn-primary" onclick="sendCustomGreeting()">🎉 Send Greeting</button>
+        <button class="btn btn-danger" onclick="deactivateGreeting()">❌ Deactivate</button>
+        
+        <div id="holidayPreview" style="margin-top: 20px; display: none;">
+            <h4>Preview:</h4>
+            <div class="holiday-greeting-card" style="position: relative; transform: none; margin: 20px 0;">
+                <h2 id="previewTitle">Merry Christmas!</h2>
+                <p id="previewMessage">Wishing you joy and happiness!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ANNOUNCEMENTS TAB -->
+<div id="announcements" class="tab-content">
+    <div class="card">
+        <h3><i class="fas fa-bullhorn"></i> Announcements Manager</h3>
+        
+        <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="announcementTitle" class="form-control" placeholder="Announcement title">
+        </div>
+        
+        <div class="form-group">
+            <label>Content</label>
+            <textarea id="announcementContent" rows="4" class="form-control" placeholder="Announcement content..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Target Audience</label>
+            <select id="announcementTarget" class="form-control">
+                <option value="all">Everyone</option>
+                <option value="admin">Admins Only</option>
+                <option value="teacher">Teachers Only</option>
+                <option value="student">Students Only</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Upload Image (optional)</label>
+            <input type="file" id="announcementImage" accept="image/*">
+        </div>
+        
+        <div class="form-group">
+            <label>Expires At (optional)</label>
+            <input type="datetime-local" id="announcementExpires" class="form-control">
+        </div>
+        
+        <button class="btn btn-primary" onclick="postAnnouncement()">📢 Post Announcement</button>
+    </div>
+    
+    <div class="card">
+        <h3>Recent Announcements</h3>
+        <div id="announcementsList"></div>
+    </div>
+</div>
+                <a href="/" style="color: #e74c3c;">🚪 Logout</a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="top-bar">
+                <div class="school-info-header" id="schoolInfoHeader">Loading...</div>
+                <a href="/" class="logout-btn">Logout</a>
+            </div>
+
+            <!-- DASHBOARD TAB -->
+            <div id="dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card"><h3>Total Students</h3><div class="number" id="totalStudents">0</div></div>
+                    <div class="stat-card"><h3>Total Teachers</h3><div class="number" id="totalTeachers">0</div></div>
+                    <div class="stat-card"><h3>Total Classes</h3><div class="number" id="totalClasses">0</div></div>
+                    <div class="stat-card"><h3>Pending Submissions</h3><div class="number" id="pendingSubmissions">0</div></div>
+                </div>
+                <div class="card">
+                    <h3>Quick Actions</h3>
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="openModal('addTeacherModal')">➕ Add Teacher</button>
+                        <button class="btn btn-success" onclick="openModal('addStudentModal')">➕ Add Student</button>
+                        <button class="btn btn-warning" onclick="openModal('addClassModal')">➕ Add Class</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCHOOL SETTINGS TAB -->
+            <div id="school" class="tab-content">
+                <div class="card">
+                    <h3>School Information</h3>
+                    <form id="schoolForm">
+                        <div class="form-group"><label>School Name</label><input type="text" name="name" id="schoolName" required></div>
+                        <div class="form-group"><label>School Location</label><input type="text" name="location" id="schoolLocation" required></div>
+                        <div class="form-group"><label>School Phone</label><input type="text" name="phone" id="schoolPhone" required></div>
+                        <div class="form-group"><label>Marquee Text</label><input type="text" name="marquee" id="schoolMarquee"></div>
+                        <button type="submit" class="btn btn-primary">Save School Info</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TEACHERS TAB (WITH EDIT) -->
+            <div id="teachers" class="tab-content">
+                <div class="card">
+                    <h3>Manage Teachers</h3>
+                    <input type="text" class="search-box" id="teacherSearch" placeholder="Search teachers..." onkeyup="searchTeachers()">
+                    <button class="btn btn-success" onclick="openModal('addTeacherModal')">➕ Add New Teacher</button>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Subjects</th><th>Class</th><th>Actions</th></tr></thead>
+                            <tbody id="teachersList"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STUDENTS TAB (WITH EDIT) -->
+            <!-- Update the students table to include password column -->
+<div id="students" class="tab-content">
+    <div class="card">
+        <h3>Manage Students</h3>
+        <select id="classFilter" class="search-box" onchange="filterStudentsByClass()">
+            <option value="">All Classes</option>
+        </select>
+        <input type="text" class="search-box" id="studentSearch" placeholder="Search students..." onkeyup="searchStudents()">
+        <button class="btn btn-success" onclick="openModal('addStudentModal')">➕ Add New Student</button>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Parent</th>
+                        <th>Parent Phone</th>
+                        <th>Class</th>
+                        <th>Subjects</th>
+                        <th>Password</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="studentsList"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add View Password Modal -->
+<div id="viewPasswordModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal('viewPasswordModal')">&times;</span>
+        <h3>Student Password</h3>
+        <div id="passwordDisplay" style="text-align: center; padding: 20px;">
+            <p><strong>Student:</strong> <span id="viewStudentName"></span></p>
+            <p><strong>Password:</strong> <span id="viewStudentPassword" style="font-size: 24px; font-weight: bold; font-family: monospace;"></span></p>
+            <button class="btn btn-primary" onclick="copyPassword()">📋 Copy Password</button>
+            <button class="btn btn-warning" onclick="resetStudentPassword()">🔄 Reset Password</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="resetPasswordModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal('resetPasswordModal')">&times;</span>
+        <h3>Reset Student Password</h3>
+        <div class="form-group">
+            <label>Student: <span id="resetStudentName"></span></label>
+        </div>
+        <div class="form-group">
+            <label>New Password</label>
+            <input type="text" id="newPassword" class="form-control" placeholder="Enter new password">
+        </div>
+        <div class="form-group">
+            <label>Confirm Password</label>
+            <input type="text" id="confirmNewPassword" class="form-control" placeholder="Confirm new password">
+        </div>
+        <button class="btn btn-primary" onclick="saveResetPassword()">Save New Password</button>
+    </div>
+</div>
+
+            <!-- CLASSES TAB -->
+            <div id="classes" class="tab-content">
+                <div class="card">
+                    <h3>Manage Classes</h3>
+                    <button class="btn btn-success" onclick="openModal('addClassModal')">➕ Add New Class</button>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead><tr><th>ID</th><th>Class Name</th><th>Students Count</th><th>Actions</th></tr></thead>
+                            <tbody id="classesList"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PENDING SUBMISSIONS TAB -->
+            <div id="submissions" class="tab-content">
+                <div class="card">
+                    <h3>Teacher Marks Submissions</h3>
+                    <div class="form-group"><label>Select Term:</label><select id="submissionTermSelect" onchange="loadSubmissions()"><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option><option value="Term 3">Term 3</option></select></div>
+                    <button class="btn btn-info" onclick="confirmAllSubmissions()">✅ Confirm All Submissions</button>
+                    <div id="submissionsList"></div>
+                </div>
+            </div>
+
+            <!-- LOCK/UNLOCK MARKS TAB -->
+            <div id="lockunlock" class="tab-content">
+                <div class="card">
+                    <h3>Lock/Unlock Marks by Class & Term</h3>
+                    <div class="form-group"><label>Select Class</label><select id="lockClassSelect"></select></div>
+                    <div class="form-group"><label>Select Term</label><select id="lockTermSelect"><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option><option value="Term 3">Term 3</option></select></div>
+                    <div class="action-buttons">
+                        <button class="btn btn-danger" onclick="lockMarks()">🔒 Lock Marks</button>
+                        <button class="btn btn-warning" onclick="unlockMarks()">🔓 Unlock Marks</button>
+                    </div>
+                    <div id="lockStatus"></div>
+                </div>
+            </div>
+
+            <!-- EXAM VERIFICATION TAB -->
+            <div id="examverification" class="tab-content">
+                <div class="card">
+                    <h3>📑 Exam Paper Verification</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card" style="background: #3b82f6;"><h3>Total Uploads</h3><div class="number" id="totalUploads">0</div></div>
+                        <div class="stat-card" style="background: #10b981;"><h3>Verified</h3><div class="number" id="verifiedCount">0</div></div>
+                        <div class="stat-card" style="background: #f59e0b;"><h3>Pending</h3><div class="number" id="pendingCount">0</div></div>
+                        <div class="stat-card" style="background: #8b5cf6;"><h3>Matched</h3><div class="number" id="matchedCount">0</div></div>
+                    </div>
+                    <div class="form-group"><label>Select Term:</label><select id="verifyTermSelect" onchange="loadVerificationSummary()"><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option><option value="Term 3">Term 3</option></select></div>
+                    <div class="form-group"><label>Select Class:</label><select id="verifyClassSelect" onchange="loadPapersToVerify()"></select></div>
+                    <div id="pendingPapersList"></div>
+                </div>
+            </div>
+
+            <!-- PRINT REPORTS TAB -->
+            <div id="reports" class="tab-content">
+                <div class="card">
+                    <h3>📄 Print Student Report Cards</h3>
+                    <div class="form-group"><label>Select Class:</label><select id="reportClassSelect" onchange="loadStudentsForReport()"></select></div>
+                    <div class="form-group"><label>Select Term:</label><select id="reportTermSelect" onchange="loadStudentsForReport()"><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option><option value="Term 3">Term 3</option></select></div>
+                    <button class="btn btn-primary" onclick="printAllReports()">🖨️ Print All Reports (ZIP)</button>
+                    <div id="studentsForReport"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD TEACHER MODAL -->
+    <div id="addTeacherModal" class="modal">
+        <div class="modal-content"><span class="close-modal" onclick="closeModal('addTeacherModal')">&times;</span>
+            <h3>Add Teacher</h3>
+            <form id="addTeacherForm">
+                <div class="form-group"><label>First Name *</label><input type="text" name="first_name" required></div>
+                <div class="form-group"><label>Last Name *</label><input type="text" name="last_name" required></div>
+                <div class="form-group"><label>Phone *</label><input type="text" name="phone" required></div>
+                <div class="form-group"><label>Email</label><input type="email" name="email"></div>
+                <div class="form-group"><label>Subjects (comma separated)</label><input type="text" name="subjects" placeholder="Math, English, Science"></div>
+                <div class="form-group"><label>Class Teaching (comma separated)</label><input type="text" name="class_teaching" placeholder="Grade 10A, Grade 10B"></div>
+                <div class="form-group"><label>Password</label><input type="text" name="password" value="teacher123"></div>
+                <button type="submit" class="btn btn-primary">Add Teacher</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- EDIT TEACHER MODAL -->
+    <div id="editTeacherModal" class="modal">
+        <div class="modal-content"><span class="close-modal" onclick="closeModal('editTeacherModal')">&times;</span>
+            <h3>Edit Teacher</h3>
+            <form id="editTeacherForm">
+                <input type="hidden" name="teacher_id" id="editTeacherId">
+                <div class="form-group"><label>First Name *</label><input type="text" name="first_name" id="editFirstName" required></div>
+                <div class="form-group"><label>Last Name *</label><input type="text" name="last_name" id="editLastName" required></div>
+                <div class="form-group"><label>Phone *</label><input type="text" name="phone" id="editPhone" required></div>
+                <div class="form-group"><label>Email</label><input type="email" name="email" id="editEmail"></div>
+                <div class="form-group"><label>Subjects</label><input type="text" name="subjects" id="editSubjects"></div>
+                <div class="form-group"><label>Class Teaching</label><input type="text" name="class_teaching" id="editClassTeaching"></div>
+                <div class="form-group"><label>Password</label><input type="text" name="password" id="editPassword" placeholder="Leave blank to keep current"></div>
+                <button type="submit" class="btn btn-primary">Update Teacher</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADD STUDENT MODAL -->
+    <div id="addStudentModal" class="modal">
+        <div class="modal-content"><span class="close-modal" onclick="closeModal('addStudentModal')">&times;</span>
+            <h3>Add Student</h3>
+            <form id="addStudentForm">
+                <div class="form-group"><label>First Name *</label><input type="text" name="first_name" required></div>
+                <div class="form-group"><label>Last Name *</label><input type="text" name="last_name" required></div>
+                <div class="form-group"><label>Age *</label><input type="number" name="age" required></div>
+                <div class="form-group"><label>Parent Name *</label><input type="text" name="parent_name" required></div>
+                <div class="form-group"><label>Parent Phone *</label><input type="text" name="parent_phone" required></div>
+                <div class="form-group"><label>Parent Email</label><input type="email" name="parent_email"></div>
+                <div class="form-group"><label>Class *</label><select name="class_name" id="studentClassSelect" required></select></div>
+                <div class="form-group"><label>Subjects (comma separated)</label><input type="text" name="subjects" placeholder="Math, English, Science"></div>
+                <button type="submit" class="btn btn-primary">Add Student</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- EDIT STUDENT MODAL -->
+    <div id="editStudentModal" class="modal">
+        <div class="modal-content"><span class="close-modal" onclick="closeModal('editStudentModal')">&times;</span>
+            <h3>Edit Student</h3>
+            <form id="editStudentForm">
+                <input type="hidden" name="student_id" id="editStudentId">
+                <div class="form-group"><label>First Name *</label><input type="text" name="first_name" id="editStudentFirstName" required></div>
+                <div class="form-group"><label>Last Name *</label><input type="text" name="last_name" id="editStudentLastName" required></div>
+                <div class="form-group"><label>Age *</label><input type="number" name="age" id="editStudentAge" required></div>
+                <div class="form-group"><label>Parent Name *</label><input type="text" name="parent_name" id="editStudentParentName" required></div>
+                <div class="form-group"><label>Parent Phone *</label><input type="text" name="parent_phone" id="editStudentParentPhone" required></div>
+                <div class="form-group"><label>Parent Email</label><input type="email" name="parent_email" id="editStudentParentEmail"></div>
+                <div class="form-group"><label>Class *</label><select name="class_name" id="editStudentClass" required></select></div>
+                <div class="form-group"><label>Subjects</label><input type="text" name="subjects" id="editStudentSubjects"></div>
+                <button type="submit" class="btn btn-primary">Update Student</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADD CLASS MODAL -->
+    <div id="addClassModal" class="modal">
+        <div class="modal-content"><span class="close-modal" onclick="closeModal('addClassModal')">&times;</span>
+            <h3>Add Class</h3>
+            <form id="addClassForm">
+                <div class="form-group"><label>Class Name *</label><input type="text" name="class_name" required></div>
+                <div class="form-group"><label>Description</label><input type="text" name="description"></div>
+                <div class="form-group"><label>Capacity</label><input type="number" name="capacity" value="40"></div>
+                <button type="submit" class="btn btn-primary">Add Class</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="marquee-bottom"><marquee id="bottomMarquee">System designed by JSLY @ 2026</marquee></div>
+
+    <script>
+    let teachersData = [], studentsData = [], classesData = [];
+
+    // ==================== TAB NAVIGATION ====================
+    function showTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+        if(tabName === 'dashboard') loadDashboard();
+        if(tabName === 'teachers') loadTeachers();
+        if(tabName === 'students') loadStudents();
+        if(tabName === 'classes') loadClasses();
+        if(tabName === 'submissions') loadSubmissions();
+        if(tabName === 'lockunlock') loadClassesForLock();
+        if(tabName === 'examverification') { loadVerificationSummary(); loadClassesForVerify(); }
+        if(tabName === 'reports') loadClassesForReport();
+        if(tabName === 'holiday') { loadHolidayStatus(); }
+        if(tabName === 'announcements') { loadAnnouncements(); }
+    }
+
+    function openModal(modalId) { document.getElementById(modalId).style.display = 'flex'; }
+    function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+
+    // ==================== SCHOOL INFO ====================
+    async function loadSchoolInfo() {
+        const res = await fetch('/api/school');
+        const school = await res.json();
+        document.getElementById('schoolName').value = school.name || '';
+        document.getElementById('schoolLocation').value = school.location || '';
+        document.getElementById('schoolPhone').value = school.phone || '';
+        document.getElementById('schoolMarquee').value = school.marquee || '';
+        document.getElementById('schoolNameSidebar').innerText = school.name || 'School Management';
+        document.getElementById('schoolLocationSidebar').innerText = school.location || '';
+        document.getElementById('schoolInfoHeader').innerHTML = `${school.name || ''} | ${school.location || ''}`;
+        document.getElementById('bottomMarquee').innerHTML = school.marquee || 'System designed by JSLY @ 2026';
+    }
+
+    document.getElementById('schoolForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = { 
+            name: document.getElementById('schoolName').value, 
+            location: document.getElementById('schoolLocation').value, 
+            phone: document.getElementById('schoolPhone').value, 
+            marquee: document.getElementById('schoolMarquee').value 
+        };
+        await fetch('/api/school', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        alert('School info saved!'); 
+        loadSchoolInfo();
+    });
+
+    // Add these functions to your admin dashboard script
+
+// Track current student for password operations
+let currentPasswordStudentId = null;
+let currentPasswordStudentName = null;
+
+async function viewStudentPassword(studentId, studentName) {
+    currentPasswordStudentId = studentId;
+    currentPasswordStudentName = studentName;
+    
+    document.getElementById('viewStudentName').innerHTML = studentName;
+    document.getElementById('viewStudentPassword').innerHTML = 'Loading...';
+    openModal('viewPasswordModal');
+    
+    try {
+        const res = await fetch(`/api/students/${studentId}/password`);
+        const data = await res.json();
+        if (data.success !== false) {
+            document.getElementById('viewStudentPassword').innerHTML = data.password;
+        } else {
+            document.getElementById('viewStudentPassword').innerHTML = 'Error loading password';
+        }
+    } catch (error) {
+        document.getElementById('viewStudentPassword').innerHTML = 'Error loading password';
+    }
+}
+
+function copyPassword() {
+    const password = document.getElementById('viewStudentPassword').innerText;
+    navigator.clipboard.writeText(password);
+    alert('Password copied to clipboard!');
+}
+
+function resetStudentPassword() {
+    closeModal('viewPasswordModal');
+    document.getElementById('resetStudentName').innerHTML = currentPasswordStudentName;
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmNewPassword').value = '';
+    openModal('resetPasswordModal');
+}
+
+async function saveResetPassword() {
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmNewPassword').value;
+    
+    if (newPassword !== confirmPassword) {
+        alert('Passwords do not match!');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        alert('Password must be at least 6 characters long!');
+        return;
+    }
+    
+    try {
+        const res = await fetch(`/api/students/${currentPasswordStudentId}/password`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: newPassword })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            alert('Password reset successfully!');
+            closeModal('resetPasswordModal');
+        } else {
+            alert('Error resetting password: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error resetting password');
+    }
+}
+
+// Update renderStudents function to include password button
+function renderStudents() {
+    const classFilter = document.getElementById('classFilter').value;
+    const search = document.getElementById('studentSearch')?.value.toLowerCase() || '';
+    let filtered = studentsData;
+    if(classFilter) filtered = filtered.filter(s => s.class_name === classFilter);
+    if(search) filtered = filtered.filter(s => s.first_name.toLowerCase().includes(search) || s.last_name.toLowerCase().includes(search));
+    
+    const tbody = document.getElementById('studentsList');
+    tbody.innerHTML = filtered.map(s => `
+        <tr>
+            <td>${s.id}</td>
+            <td>${s.first_name} ${s.last_name}</td>
+            <td>${s.age}</td>
+            <td>${s.parent_name}</td>
+            <td>${s.parent_phone}</td>
+            <td>${s.class_name}</td>
+            <td>${s.subjects || '-'}</td>
+            <td style="text-align: center;">
+                <button class="btn btn-sm btn-info" onclick="viewStudentPassword(${s.id}, '${s.first_name} ${s.last_name}')" style="background: #3b82f6; color: white; padding: 5px 10px;">🔑 View Password</button>
+            </td>
+            <td>
+                <button class="edit-btn" onclick="editStudent(${s.id})">✏️ Edit</button>
+                <button class="delete-btn" onclick="deleteStudent(${s.id})">🗑️ Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Also update the add student form submission to include password
+// Find the addStudentForm submit handler and update it:
+document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    
+    // Validate password if present
+    if (data.password && data.password.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+    }
+    
+    const res = await fetch('/api/students', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(data) 
+    });
+    if(res.ok) {
+        alert('Student added successfully!');
+        closeModal('addStudentModal');
+        loadStudents();
+        loadDashboard();
+        e.target.reset();
+    } else {
+        const error = await res.json();
+        alert('Error adding student: ' + (error.error || 'Unknown error'));
+    }
+});
+
+    // ==================== DASHBOARD ====================
+    async function loadDashboard() {
+        const res = await fetch('/api/stats');
+        const stats = await res.json();
+        document.getElementById('totalStudents').innerText = stats.total_students;
+        document.getElementById('totalTeachers').innerText = stats.total_teachers;
+        document.getElementById('totalClasses').innerText = stats.total_classes;
+        document.getElementById('pendingSubmissions').innerText = stats.pending_submissions || 0;
+    }
+
+    // ==================== TEACHERS CRUD ====================
+    async function loadTeachers() {
+        const res = await fetch('/api/teachers');
+        teachersData = await res.json();
+        renderTeachers();
+    }
+
+    function renderTeachers() {
+        const search = document.getElementById('teacherSearch')?.value.toLowerCase() || '';
+        const filtered = teachersData.filter(t => t.first_name.toLowerCase().includes(search) || t.last_name.toLowerCase().includes(search));
+        const tbody = document.getElementById('teachersList');
+        tbody.innerHTML = filtered.map(t => `
+            <tr>
+                <td>${t.id}</td>
+                <td>${t.first_name} ${t.last_name}</td>
+                <td>${t.phone}</td>
+                <td>${t.email || '-'}</td>
+                <td>${t.subjects || '-'}</td>
+                <td>${t.class_teaching || '-'}</td>
+                <td>
+                    <button class="edit-btn" onclick="editTeacher(${t.id})">✏️ Edit</button>
+                    <button class="delete-btn" onclick="deleteTeacher(${t.id})">🗑️ Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function editTeacher(id) {
+        const res = await fetch(`/api/teachers/${id}`);
+        const teacher = await res.json();
+        document.getElementById('editTeacherId').value = teacher.id;
+        document.getElementById('editFirstName').value = teacher.first_name;
+        document.getElementById('editLastName').value = teacher.last_name;
+        document.getElementById('editPhone').value = teacher.phone;
+        document.getElementById('editEmail').value = teacher.email || '';
+        document.getElementById('editSubjects').value = teacher.subjects || '';
+        document.getElementById('editClassTeaching').value = teacher.class_teaching || '';
+        document.getElementById('editPassword').value = '';
+        openModal('editTeacherModal');
+    }
+
+    document.getElementById('editTeacherForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('editTeacherId').value;
+        const data = {
+            first_name: document.getElementById('editFirstName').value,
+            last_name: document.getElementById('editLastName').value,
+            phone: document.getElementById('editPhone').value,
+            email: document.getElementById('editEmail').value,
+            subjects: document.getElementById('editSubjects').value,
+            class_teaching: document.getElementById('editClassTeaching').value,
+            password: document.getElementById('editPassword').value || undefined
+        };
+        await fetch(`/api/teachers/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        closeModal('editTeacherModal');
+        loadTeachers();
+        alert('Teacher updated successfully!');
+    });
+
+    window.deleteTeacher = async (id) => { 
+        if(confirm('Delete teacher?')) { 
+            await fetch(`/api/teachers/${id}`, { method: 'DELETE' }); 
+            loadTeachers(); 
+            loadDashboard(); 
+        } 
+    };
+    
+    document.getElementById('addTeacherForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        await fetch('/api/teachers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(formData)) });
+        closeModal('addTeacherModal'); 
+        loadTeachers(); 
+        loadDashboard(); 
+        e.target.reset();
+    });
+    
+    function searchTeachers() { renderTeachers(); }
+
+    // ==================== STUDENTS CRUD ====================
+    async function loadStudents() {
+        const res = await fetch('/api/students');
+        studentsData = await res.json();
+        const classRes = await fetch('/api/classes');
+        classesData = await classRes.json();
+        document.getElementById('classFilter').innerHTML = '<option value="">All Classes</option>' + classesData.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        document.getElementById('studentClassSelect').innerHTML = classesData.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        document.getElementById('editStudentClass').innerHTML = classesData.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        renderStudents();
+    }
+
+    function renderStudents() {
+        const classFilter = document.getElementById('classFilter').value;
+        const search = document.getElementById('studentSearch')?.value.toLowerCase() || '';
+        let filtered = studentsData;
+        if(classFilter) filtered = filtered.filter(s => s.class_name === classFilter);
+        if(search) filtered = filtered.filter(s => s.first_name.toLowerCase().includes(search) || s.last_name.toLowerCase().includes(search));
+        const tbody = document.getElementById('studentsList');
+        tbody.innerHTML = filtered.map(s => `
+            <tr>
+                <td>${s.id}</td>
+                <td>${s.first_name} ${s.last_name}</td>
+                <td>${s.age}</td>
+                <td>${s.parent_name}</td>
+                <td>${s.parent_phone}</td>
+                <td>${s.class_name}</td>
+                <td>${s.subjects || '-'}</td>
+                <td>
+                    <button class="edit-btn" onclick="editStudent(${s.id})">✏️ Edit</button>
+                    <button class="delete-btn" onclick="deleteStudent(${s.id})">🗑️ Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function editStudent(id) {
+        const res = await fetch(`/api/students/${id}`);
+        const student = await res.json();
+        document.getElementById('editStudentId').value = student.id;
+        document.getElementById('editStudentFirstName').value = student.first_name;
+        document.getElementById('editStudentLastName').value = student.last_name;
+        document.getElementById('editStudentAge').value = student.age;
+        document.getElementById('editStudentParentName').value = student.parent_name;
+        document.getElementById('editStudentParentPhone').value = student.parent_phone;
+        document.getElementById('editStudentParentEmail').value = student.parent_email || '';
+        document.getElementById('editStudentClass').value = student.class_name;
+        document.getElementById('editStudentSubjects').value = student.subjects || '';
+        openModal('editStudentModal');
+    }
+
+    document.getElementById('editStudentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('editStudentId').value;
+        const data = {
+            first_name: document.getElementById('editStudentFirstName').value,
+            last_name: document.getElementById('editStudentLastName').value,
+            age: document.getElementById('editStudentAge').value,
+            parent_name: document.getElementById('editStudentParentName').value,
+            parent_phone: document.getElementById('editStudentParentPhone').value,
+            parent_email: document.getElementById('editStudentParentEmail').value,
+            class_name: document.getElementById('editStudentClass').value,
+            subjects: document.getElementById('editStudentSubjects').value
+        };
+        await fetch(`/api/students/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        closeModal('editStudentModal');
+        loadStudents();
+        alert('Student updated successfully!');
+    });
+
+    window.deleteStudent = async (id) => { 
+        if(confirm('Delete student?')) { 
+            await fetch(`/api/students/${id}`, { method: 'DELETE' }); 
+            loadStudents(); 
+            loadDashboard(); 
+        } 
+    };
+    
+    document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        await fetch('/api/students', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(formData)) });
+        closeModal('addStudentModal'); 
+        loadStudents(); 
+        loadDashboard(); 
+        e.target.reset();
+    });
+    
+    function filterStudentsByClass() { renderStudents(); }
+    function searchStudents() { renderStudents(); }
+
+    // ==================== CLASSES CRUD ====================
+    async function loadClasses() {
+        const res = await fetch('/api/classes');
+        classesData = await res.json();
+        const tbody = document.getElementById('classesList');
+        tbody.innerHTML = classesData.map(c => `<tr><td>${c.id}</td><td>${c.name}</td><td>${studentsData.filter(s => s.class_name === c.name).length}</td><td><button class="delete-btn" onclick="deleteClass(${c.id})">Delete</button></td></tr>`).join('');
+    }
+    
+    window.deleteClass = async (id) => { 
+        if(confirm('Delete class?')) { 
+            await fetch(`/api/classes/${id}`, { method: 'DELETE' }); 
+            loadClasses(); 
+            loadDashboard(); 
+        } 
+    };
+    
+    document.getElementById('addClassForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = { 
+            name: document.querySelector('#addClassForm input[name="class_name"]').value, 
+            description: document.querySelector('#addClassForm input[name="description"]')?.value || '', 
+            capacity: document.querySelector('#addClassForm input[name="capacity"]')?.value || 40 
+        };
+        await fetch('/api/classes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        closeModal('addClassModal'); 
+        loadClasses(); 
+        loadDashboard();
+    });
+
+    // ==================== SUBMISSIONS ====================
+    async function loadSubmissions() {
+        const term = document.getElementById('submissionTermSelect').value;
+        const res = await fetch(`/api/teacher_submissions/${term}`);
+        const submissions = await res.json();
+        const container = document.getElementById('submissionsList');
+        if(submissions.length === 0) { container.innerHTML = '<div class="submission-card">No pending submissions.</div>'; return; }
+        container.innerHTML = submissions.map(sub => `<div class="submission-card"><div><strong>${sub.first_name} ${sub.last_name}</strong><br><small>${sub.subject} | Students: ${sub.student_count}</small></div><button class="btn btn-success btn-small" onclick="confirmSubmission(${sub.teacher_id}, '${sub.subject}', '${term}')">✓ Confirm</button></div>`).join('');
+    }
+    
+    async function confirmSubmission(teacherId, subject, term) {
+        if(confirm('Confirm these marks?')) {
+            await fetch('/api/confirm_submission', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teacher_id: teacherId, subject: subject, term: term }) });
+            alert('Confirmed!'); 
+            loadSubmissions(); 
+            loadDashboard();
+        }
+    }
+    
+    async function confirmAllSubmissions() {
+        const term = document.getElementById('submissionTermSelect').value;
+        if(confirm(`Confirm ALL submissions for ${term}?`)) {
+            const res = await fetch('/api/confirm_all_submissions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ term: term }) });
+            const result = await res.json();
+            alert(`${result.count} submissions confirmed!`); 
+            loadSubmissions(); 
+            loadDashboard();
+        }
+    }
+
+    // ==================== LOCK/UNLOCK ====================
+    async function loadClassesForLock() {
+        const res = await fetch('/api/classes');
+        const classes = await res.json();
+        document.getElementById('lockClassSelect').innerHTML = '<option value="">Select Class</option>' + classes.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    }
+    
+    async function lockMarks() {
+        const className = document.getElementById('lockClassSelect').value;
+        const term = document.getElementById('lockTermSelect').value;
+        if(!className) return alert('Select a class');
+        if(confirm(`Lock marks for ${className} - ${term}?`)) {
+            await fetch('/api/lock_marks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ class_name: className, term: term, lock: true }) });
+            alert('Marks locked!'); 
+            checkLockStatus();
+        }
+    }
+    
+    async function unlockMarks() {
+        const className = document.getElementById('lockClassSelect').value;
+        const term = document.getElementById('lockTermSelect').value;
+        if(!className) return alert('Select a class');
+        if(confirm(`Unlock marks for ${className} - ${term}?`)) {
+            await fetch('/api/lock_marks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ class_name: className, term: term, lock: false }) });
+            alert('Marks unlocked!'); 
+            checkLockStatus();
+        }
+    }
+    
+    async function checkLockStatus() {
+        const className = document.getElementById('lockClassSelect').value;
+        const term = document.getElementById('lockTermSelect').value;
+        if(!className) return;
+        const res = await fetch(`/api/marks_status/${className}/${term}`);
+        const status = await res.json();
+        document.getElementById('lockStatus').innerHTML = `<div style="background:#e8f4fd;padding:15px;border-radius:8px;"><p><strong>${className} - ${term}</strong></p><p>Locked: ${status.locked_count}/${status.total_students}</p><p>Confirmed: ${status.confirmed_count}/${status.total_students}</p></div>`;
+    }
+    
+    document.getElementById('lockClassSelect').addEventListener('change', checkLockStatus);
+    document.getElementById('lockTermSelect').addEventListener('change', checkLockStatus);
+
+    // ==================== EXAM VERIFICATION ====================
+    async function loadClassesForVerify() {
+        const res = await fetch('/api/classes');
+        const classes = await res.json();
+        document.getElementById('verifyClassSelect').innerHTML = '<option value="">All Classes</option>' + classes.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    }
+    
+    async function loadVerificationSummary() {
+        const term = document.getElementById('verifyTermSelect').value;
+        const res = await fetch(`/api/verification_summary/${term}`);
+        const summary = await res.json();
+        document.getElementById('totalUploads').innerText = summary.total_uploads;
+        document.getElementById('verifiedCount').innerText = summary.verified_count;
+        document.getElementById('pendingCount').innerText = summary.pending_count;
+        document.getElementById('matchedCount').innerText = summary.matched_count;
+        loadPapersToVerify();
+    }
+    
+    async function loadPapersToVerify() {
+        const term = document.getElementById('verifyTermSelect').value;
+        const className = document.getElementById('verifyClassSelect').value;
+        let papers = [];
+        if(className) {
+            const res = await fetch(`/api/check_verification_status/${className}/${term}`);
+            papers = await res.json();
+        } else {
+            const classesRes = await fetch('/api/classes');
+            const classes = await classesRes.json();
+            for(let cls of classes) {
+                const res = await fetch(`/api/check_verification_status/${cls.name}/${term}`);
+                const clsPapers = await res.json();
+                papers.push(...clsPapers);
+            }
+        }
+        const pendingPapers = papers.filter(p => !p.verified);
+        const container = document.getElementById('pendingPapersList');
+        if(pendingPapers.length === 0) { container.innerHTML = '<div class="card"><p>✅ No pending verifications.</p></div>'; return; }
+        container.innerHTML = pendingPapers.map(paper => `<div class="submission-card"><div><strong>${paper.student_name}</strong><br><small>${paper.subject} | Entered: ${paper.entered_mark || 0}/100</small></div><div style="margin-top:10px;"><button class="btn btn-primary btn-small" onclick="viewExamPaper(${paper.paper_id})">📄 View Paper</button><button class="btn btn-success btn-small" onclick="verifyPaper(${paper.paper_id}, true)">✓ Match</button><button class="btn btn-danger btn-small" onclick="verifyPaper(${paper.paper_id}, false)">✗ Don't Match</button></div></div>`).join('');
+    }
+    
+    async function verifyPaper(paperId, matches) {
+        if(confirm(`Verify this paper as ${matches ? 'MATCHING' : 'NOT MATCHING'}?`)) {
+            await fetch('/api/verify_exam_paper', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paper_id: paperId, marks_match: matches, admin_id: 1 }) });
+            alert('Verified!'); 
+            loadVerificationSummary();
+        }
+    }
+    
+    async function viewExamPaper(paperId) { 
+        window.open(`/api/view_exam_paper/${paperId}`, '_blank'); 
+    }
+
+    // ==================== REPORTS ====================
+    async function loadClassesForReport() {
+        const res = await fetch('/api/classes');
+        const classes = await res.json();
+        document.getElementById('reportClassSelect').innerHTML = '<option value="">Select Class</option>' + classes.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    }
+    
+    async function loadStudentsForReport() {
+        const className = document.getElementById('reportClassSelect').value;
+        const term = document.getElementById('reportTermSelect').value;
+        if(!className) { document.getElementById('studentsForReport').innerHTML = '<p>Select a class.</p>'; return; }
+        const res = await fetch(`/api/students/by_class/${className}`);
+        const students = await res.json();
+        const container = document.getElementById('studentsForReport');
+        if(students.length === 0) { container.innerHTML = '<p>No students.</p>'; return; }
+        let html = '<h4>Students - Click to Generate Report</h4>';
+        for(let student of students) {
+            const marksRes = await fetch(`/api/marks/student/${student.id}/${term}`);
+            const marks = await marksRes.json();
+            const avg = marks.length ? marks.reduce((s,m)=>s+m.total,0)/marks.length : 0;
+            const grade = avg >= 90 ? 'Excellent' : avg >= 70 ? 'Very Good' : avg >= 55 ? 'Good' : avg >= 40 ? 'Credit' : 'Fail';
+            html += `<div class="student-report-card" onclick="generateReport(${student.id}, '${term}')"><strong>${student.first_name} ${student.last_name}</strong><br><span class="grade-badge grade-${grade.toLowerCase().replace(' ', '-')}">${grade}</span><span style="margin-left:10px;">📄 Print</span></div>`;
+        }
+        container.innerHTML = html;
+    }
+    
+    function generateReport(studentId, term) { 
+        window.open(`/admin/generate_report/${studentId}/${term}`, '_blank'); 
+    }
+    
+    function printAllReports() {
+        const className = document.getElementById('reportClassSelect').value;
+        const term = document.getElementById('reportTermSelect').value;
+        if(!className) { alert('Select a class'); return; }
+        window.open(`/admin/generate_class_reports/${className}/${term}`, '_blank');
+    }
+
+    // ==================== HOLIDAY GREETINGS FUNCTIONS ====================
+    async function loadHolidayStatus() {
+        const response = await fetch('/api/holiday/current');
+        const greeting = await response.json();
+        if (greeting && greeting.holiday) {
+            document.getElementById('customHolidayMessage').value = greeting.message;
+        }
+    }
+
+    async function activateHoliday(holidayName) {
+        const holidays = {
+            'Merry Christmas': {
+                message: '🎄 Wishing you a Merry Christmas and a Happy New Year! May this festive season bring joy, peace, and success to your academic journey! 🎅✨',
+                animation: 'christmas'
+            },
+            'Happy New Year': {
+                message: '🎊 Happy New Year! Wishing all students, teachers, and staff a prosperous, successful, and blessed year ahead! May 2025 bring you excellence! 🎉🌟',
+                animation: 'newyear'
+            },
+            'Happy Easter': {
+                message: '🐰 Happy Easter! May this season of renewal bring you hope, joy, and academic excellence! Christ is Risen! He is Risen Indeed! 🌸🙏',
+                animation: 'easter'
+            }
+        };
+        
+        const holiday = holidays[holidayName];
+        if (holiday) {
+            const response = await fetch('/api/holiday/activate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    holiday_name: holidayName,
+                    message: holiday.message,
+                    animation_style: holiday.animation,
+                    is_manual: 1,
+                    activated_by: 1
+                })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                alert(`✅ ${holidayName} greeting activated!`);
+                location.reload();
+            }
+        }
+    }
+
+    async function sendCustomGreeting() {
+        const message = document.getElementById('customHolidayMessage').value;
+        if (!message) {
+            alert('Please enter a message');
+            return;
+        }
+        
+        const animationStyle = document.getElementById('animationStyle').value;
+        const imageFile = document.getElementById('holidayImage').files[0];
+        
+        let imageData = null;
+        let imageType = null;
+        
+        if (imageFile) {
+            imageData = await readFileAsBase64(imageFile);
+            imageType = imageFile.type;
+        }
+        
+        const response = await fetch('/api/holiday/activate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                holiday_name: 'Custom Greeting',
+                message: message,
+                image_data: imageData,
+                image_type: imageType,
+                animation_style: animationStyle,
+                is_manual: 1,
+                activated_by: 1
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            alert('✅ Custom greeting sent to all users!');
+            location.reload();
+        }
+    }
+
+    async function deactivateGreeting() {
+        if (confirm('Deactivate current holiday greeting?')) {
+            await fetch('/api/holiday/deactivate', { method: 'POST' });
+            alert('Greeting deactivated');
+            location.reload();
+        }
+    }
+
+    // ==================== ANNOUNCEMENTS FUNCTIONS ====================
+    async function postAnnouncement() {
+        const title = document.getElementById('announcementTitle').value;
+        const content = document.getElementById('announcementContent').value;
+        const target = document.getElementById('announcementTarget').value;
+        const expires = document.getElementById('announcementExpires').value;
+        const imageFile = document.getElementById('announcementImage').files[0];
+        
+        if (!title || !content) {
+            alert('Please enter title and content');
+            return;
+        }
+        
+        let imageData = null;
+        let imageType = null;
+        
+        if (imageFile) {
+            imageData = await readFileAsBase64(imageFile);
+            imageType = imageFile.type;
+        }
+        
+        const response = await fetch('/api/announcements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: title,
+                content: content,
+                image_data: imageData,
+                image_type: imageType,
+                target_role: target,
+                expires_at: expires || null,
+                created_by: 1
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            alert('✅ Announcement posted!');
+            document.getElementById('announcementTitle').value = '';
+            document.getElementById('announcementContent').value = '';
+            document.getElementById('announcementImage').value = '';
+            document.getElementById('announcementExpires').value = '';
+            loadAnnouncements();
+        }
+    }
+
+    async function loadAnnouncements() {
+        const response = await fetch('/api/announcements/admin');
+        const announcements = await response.json();
+        
+        const container = document.getElementById('announcementsList');
+        if (container) {
+            if (announcements.length === 0) {
+                container.innerHTML = '<p style="color: #999; text-align: center;">No announcements yet.</p>';
+            } else {
+                container.innerHTML = announcements.map(a => `
+                    <div class="announcement-item" style="background: white; border-radius: 10px; padding: 15px; margin-bottom: 10px; border-left: 4px solid #3b82f6;">
+                        <div class="announcement-title" style="font-weight: bold; color: #1e293b; margin-bottom: 5px;">${escapeHtml(a.title)}</div>
+                        <div class="announcement-content" style="font-size: 13px; color: #64748b;">${escapeHtml(a.content)}</div>
+                        ${a.image_data ? `<img src="data:${a.image_type};base64,${a.image_data}" style="max-width: 100%; border-radius: 8px; margin-top: 10px;">` : ''}
+                        <small style="color: #999; display: block; margin-top: 10px;">📅 ${new Date(a.created_at).toLocaleString()}</small>
+                        <button class="btn btn-sm btn-danger" onclick="deleteAnnouncement(${a.id})" style="margin-top: 10px; padding: 5px 10px; font-size: 12px;">Delete</button>
+                    </div>
+                `).join('');
+            }
+        }
+    }
+
+    async function deleteAnnouncement(id) {
+        if (confirm('Delete this announcement?')) {
+            await fetch(`/api/announcements/${id}`, { method: 'DELETE' });
+            loadAnnouncements();
+        }
+    }
+
+    function readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ==================== INITIALIZATION ====================
+    window.onclick = (e) => { 
+        if(e.target.classList.contains('modal')) e.target.style.display = 'none'; 
+    };
+    
+    // Load all initial data
+    loadSchoolInfo(); 
+    loadDashboard(); 
+    loadTeachers(); 
+    loadStudents(); 
+    loadClasses();
+    loadAnnouncements();
+</script>
+</body>
+</html>

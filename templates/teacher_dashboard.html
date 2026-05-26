@@ -1,0 +1,1176 @@
+<!-- templates/teacher_dashboard.html - COMPLETE CLEAN VERSION with Exam Upload -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - School Management System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .dashboard-container { display: flex; min-height: 100vh; }
+        
+        .sidebar { 
+            width: 280px; 
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+            color: white; 
+            position: fixed; 
+            height: 100vh; 
+            overflow-y: auto; 
+            box-shadow: 8px 0 32px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        
+        .sidebar-header { 
+            padding: 30px 20px; 
+            text-align: center; 
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .avatar-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 40px;
+            box-shadow: 0 10px 25px -5px rgba(59,130,246,0.5);
+            transition: transform 0.3s;
+        }
+        
+        .avatar-icon:hover { transform: scale(1.05); }
+        .sidebar-header h3 { font-size: 20px; font-weight: 600; }
+        .sidebar-nav { padding: 25px 0; }
+        
+        .sidebar-nav a { 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            padding: 14px 25px; 
+            color: rgba(255,255,255,0.7); 
+            text-decoration: none; 
+            transition: all 0.3s; 
+            font-size: 14px;
+            font-weight: 500;
+            margin: 5px 15px;
+            border-radius: 12px;
+        }
+        
+        .sidebar-nav a:hover { 
+            background: rgba(59,130,246,0.2); 
+            color: white; 
+            transform: translateX(5px);
+        }
+        
+        .sidebar-nav a.active { 
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white; 
+            box-shadow: 0 5px 15px rgba(59,130,246,0.4);
+        }
+        
+        .main-content { 
+            flex: 1; 
+            margin-left: 280px; 
+            padding: 25px; 
+            margin-bottom: 50px; 
+        }
+        
+        .top-bar { 
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 18px 30px; 
+            border-radius: 20px; 
+            margin-bottom: 30px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+            gap: 25px; 
+            margin-bottom: 35px; 
+        }
+        
+        .stat-card { 
+            background: white;
+            padding: 25px; 
+            border-radius: 24px; 
+            text-align: center; 
+            transition: all 0.3s;
+            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+        }
+        
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-card h3 { font-size: 14px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 12px; }
+        .stat-card .number { font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #1e293b, #3b82f6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        
+        .classes-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .class-card {
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px -10px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .class-card:hover { transform: translateY(-8px) scale(1.02); }
+        .class-card.active { border: 2px solid #3b82f6; box-shadow: 0 20px 40px -10px rgba(59,130,246,0.3); }
+        
+        .class-card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: white;
+            position: relative;
+        }
+        
+        .class-card-header h3 { font-size: 22px; font-weight: 700; }
+        .student-count-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .class-card-body { padding: 20px; }
+        .subject-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+        .subject-tag { background: #e0e7ff; color: #4338ca; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .student-preview { display: flex; justify-content: space-between; align-items: center; padding-top: 15px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 13px; }
+        
+        .subject-selector-modern {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+        
+        .subject-title { font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 15px; }
+        .subject-buttons-modern { display: flex; gap: 12px; flex-wrap: wrap; }
+        
+        .subject-btn-modern {
+            padding: 12px 24px;
+            background: #f1f5f9;
+            border: none;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .subject-btn-modern:hover { background: #e2e8f0; transform: translateY(-2px); }
+        .subject-btn-modern.active { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; }
+        
+        .student-card-modern {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .student-card-modern:hover { box-shadow: 0 8px 25px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        
+        .student-header-modern {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .student-name-modern { font-size: 18px; font-weight: 700; color: #1e293b; }
+        .student-id { font-size: 12px; color: #94a3b8; margin-top: 5px; }
+        
+        .marks-grid-modern {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .mark-field { background: #f8fafc; padding: 12px; border-radius: 12px; }
+        .mark-field label { display: block; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 8px; }
+        .mark-field input { width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 14px; font-weight: 600; }
+        .mark-field input:focus { outline: none; border-color: #3b82f6; }
+        
+        .score-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .ca-exam-scores { display: flex; gap: 20px; }
+        .score-item { text-align: center; }
+        .score-label { font-size: 11px; color: #64748b; font-weight: 600; }
+        .score-value { font-size: 20px; font-weight: 800; color: #3b82f6; }
+        .total-score { text-align: right; }
+        .total-label { font-size: 11px; color: #64748b; }
+        .total-value { font-size: 28px; font-weight: 800; color: #10b981; }
+        
+        .btn-save {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(16,185,129,0.4); }
+        
+        .send-btn {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            padding: 14px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+        }
+        
+        .send-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(59,130,246,0.5); }
+        
+        .search-student-box { margin-bottom: 25px; }
+        .search-student-box input {
+            width: 100%;
+            max-width: 400px;
+            padding: 14px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 50px;
+            font-size: 14px;
+        }
+        
+        .search-student-box input:focus { outline: none; border-color: #3b82f6; }
+        .student-count-info { font-size: 13px; color: #64748b; margin-top: 8px; }
+        
+        .term-selector-modern {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .term-selector-modern select {
+            padding: 10px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
+            background: white;
+        }
+        
+        .exam-upload-card {
+            background: linear-gradient(135deg, #667eea15, #764ba215);
+            border-radius: 20px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        
+        .file-upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .file-upload-area:hover { border-color: #3b82f6; background: #f8fafc; }
+        
+        .verification-status-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        
+        .marquee-bottom {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: white;
+            padding: 12px;
+            text-align: center;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; border-radius: 12px; color: #92400e; }
+        .success { background: #d1fae5; border-left: 4px solid #10b981; padding: 15px; border-radius: 12px; color: #065f46; }
+        
+        .modern-select {
+            padding: 12px;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            width: 100%;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar { width: 80px; }
+            .sidebar-header h3, .sidebar-nav a span { display: none; }
+            .main-content { margin-left: 80px; }
+            .classes-container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Announcements Section -->
+<div id="announcementsContainer" class="announcements-section" style="display: none;"></div>
+
+<!-- Holiday Greeting Modal -->
+<div id="holidayGreetingModal" style="display: none;"></div>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="avatar-icon">👨‍🏫</div>
+                <h3>Teacher Portal</h3>
+            </div>
+            <div class="sidebar-nav">
+                <a href="#" class="active" onclick="showSection('dashboard')">📊 Dashboard</a>
+                <a href="#" onclick="showSection('marks')">📝 Enter Marks</a>
+                <a href="#" onclick="showSection('upload')">📎 Upload Exam Papers</a>
+                <a href="#" onclick="showSection('verification')">✅ Verification Status</a>
+                <a href="#" onclick="showSection('students')">👨‍🎓 My Students</a>
+                <a href="/" style="color: #ef4444;">🚪 Logout</a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="top-bar">
+                <div class="school-info-header" id="schoolInfoHeader">Loading...</div>
+                <div class="welcome-text">Welcome, <span id="teacherName"></span></div>
+            </div>
+
+            <!-- ==================== DASHBOARD TAB ==================== -->
+            <div id="dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card"><h3>My Classes</h3><div class="number" id="classCount">0</div></div>
+                    <div class="stat-card"><h3>My Subjects</h3><div class="number" id="subjectCount">0</div></div>
+                    <div class="stat-card"><h3>Total Students</h3><div class="number" id="totalStudentCount">0</div></div>
+                </div>
+                
+                <div class="classes-container" id="classesContainer"></div>
+                
+                <div class="card" style="background:white; border-radius:24px; padding:25px; margin-top:20px;">
+                    <h3 style="margin-bottom:15px;">📝 Instructions</h3>
+                    <ul style="margin-left:20px; color:#475569; line-height:1.8;">
+                        <li>Click on any <strong>Class Card</strong> to enter marks for that class</li>
+                        <li>Select a <strong>Subject</strong> to enter marks for that subject</li>
+                        <li>Use the <strong>Search Bar</strong> to quickly find a student</li>
+                        <li>Marks are automatically calculated using the formula</li>
+                        <li>Click <strong>"Save Marks"</strong> for each student</li>
+                        <li>Upload exam papers for verification under <strong>"Upload Exam Papers"</strong> tab</li>
+                        <li>When done, click <strong>"Send All Records to Admin"</strong></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- ==================== ENTER MARKS TAB ==================== -->
+            <div id="marks" class="tab-content">
+                <div class="term-selector-modern">
+                    <label>📅 Select Term:</label>
+                    <select id="termSelect" onchange="loadCurrentClassStudents()">
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                    </select>
+                </div>
+                
+                <div class="classes-container" id="marksClassContainer"></div>
+                
+                <div id="subjectSelectorContainer" style="display:none;">
+                    <div class="subject-selector-modern">
+                        <div class="subject-title">📖 Select Subject</div>
+                        <div class="subject-buttons-modern" id="subjectButtonsModern"></div>
+                    </div>
+                </div>
+                
+                <div id="marksStatus"></div>
+                
+                <div class="search-student-box" id="searchBox" style="display:none;">
+                    <input type="text" id="studentSearchInput" placeholder="🔍 Search student by name..." onkeyup="filterStudents()">
+                    <div class="student-count-info" id="studentCountDisplay"></div>
+                </div>
+                
+                <div id="studentsMarksListModern"></div>
+                
+                <button class="send-btn" onclick="sendAllToAdmin()">📤 Send All Records to Admin (Lock Marks)</button>
+            </div>
+
+            <!-- ==================== UPLOAD EXAM PAPERS TAB ==================== -->
+            <div id="upload" class="tab-content">
+                <div class="term-selector-modern">
+                    <label>📅 Select Term:</label>
+                    <select id="uploadTermSelect" onchange="loadStudentsForUpload()">
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                    </select>
+                </div>
+                
+                <div class="classes-container" id="uploadClassContainer"></div>
+                
+                <div id="uploadFormContainer" style="display:none;">
+                    <div class="exam-upload-card">
+                        <h4 style="margin-bottom: 15px;">📎 Upload Exam Paper for Verification</h4>
+                        <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
+                            Upload scanned exam paper. Admin will verify if the marks you entered match this paper.
+                        </p>
+                        
+                        <div id="uploadStatus"></div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <select id="uploadStudentSelect" class="modern-select">
+                                <option value="">Select Student</option>
+                            </select>
+                            
+                            <select id="uploadSubjectSelect" class="modern-select">
+                                <option value="">Select Subject</option>
+                            </select>
+                        </div>
+                        
+                        <div class="file-upload-area" onclick="document.getElementById('examFile').click()">
+                            <div style="font-size: 40px; margin-bottom: 10px;">📄</div>
+                            <div style="font-weight: 500;">Click to upload exam paper</div>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 5px;">PDF, JPG, PNG (Max 10MB)</div>
+                            <input type="file" id="examFile" accept=".pdf,.jpg,.png,.jpeg" style="display: none;">
+                        </div>
+                        
+                        <button class="btn-save" style="margin-top: 15px; width: 100%;" onclick="uploadExamPaper()">📤 Upload Exam Paper</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== VERIFICATION STATUS TAB ==================== -->
+            <div id="verification" class="tab-content">
+                <div class="term-selector-modern">
+                    <label>📅 Select Term:</label>
+                    <select id="verifyTermSelect" onchange="loadVerificationStatus()">
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                    </select>
+                </div>
+                
+                <div class="verification-status-card">
+                    <h4 style="margin-bottom: 15px;">✅ My Uploaded Papers - Verification Status</h4>
+                    <div id="verificationStatusList"></div>
+                </div>
+            </div>
+
+            <!-- ==================== MY STUDENTS TAB ==================== -->
+            <div id="students" class="tab-content">
+                <div class="search-student-box">
+                    <input type="text" id="studentListSearch" placeholder="🔍 Search student..." onkeyup="filterStudentList()">
+                </div>
+                <div id="studentsListModern"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="marquee-bottom">
+        <marquee id="bottomMarquee">🏆 Professional School Management System | Designed by JSLY @ 2026</marquee>
+    </div>
+
+    <script>
+    let teacherData = null;
+    let teacherClasses = [];
+    let teacherClassesData = [];
+    let currentClass = '';
+    let currentSubject = '';
+    let studentsData = [];
+    let filteredStudents = [];
+    let allStudentsList = [];
+    let teacherId = {{ teacher_id }};
+
+    // ==================== LOAD FUNCTIONS ====================
+    async function loadSchoolInfo() {
+        const res = await fetch('/api/school');
+        const school = await res.json();
+        document.getElementById('schoolInfoHeader').innerHTML = `${school.name || 'School'} | ${school.location || ''}`;
+        document.getElementById('bottomMarquee').innerHTML = school.marquee || '🏆 Professional School Management System | JSLY @ 2026';
+    }
+
+    async function loadTeacherInfo() {
+        const res = await fetch(`/api/teachers/${teacherId}`);
+        teacherData = await res.json();
+        document.getElementById('teacherName').innerHTML = `${teacherData.first_name} ${teacherData.last_name}`;
+        
+        const classesRes = await fetch(`/api/teachers/${teacherId}/classes`);
+        teacherClasses = await classesRes.json();
+        
+        const uniqueClasses = [...new Set(teacherClasses.map(tc => tc.class_name))];
+        document.getElementById('classCount').innerHTML = uniqueClasses.length;
+        
+        const uniqueSubjects = [...new Set(teacherClasses.map(tc => tc.subject))];
+        document.getElementById('subjectCount').innerHTML = uniqueSubjects.length;
+        
+        teacherClassesData = [];
+        let totalStudents = 0;
+        for (let cls of uniqueClasses) {
+            const studentsRes = await fetch(`/api/students/by_class/${cls}`);
+            const students = await studentsRes.json();
+            const subjectsForClass = teacherClasses.filter(tc => tc.class_name === cls).map(tc => tc.subject);
+            teacherClassesData.push({
+                name: cls,
+                studentCount: students.length,
+                subjects: [...new Set(subjectsForClass)],
+                students: students
+            });
+            totalStudents += students.length;
+        }
+        document.getElementById('totalStudentCount').innerHTML = totalStudents;
+        
+        renderDashboardClasses();
+        renderMarksClasses();
+        renderUploadClasses();
+    }
+    
+    // ==================== RENDER CLASS CARDS ====================
+    function renderDashboardClasses() {
+        const container = document.getElementById('classesContainer');
+        if (teacherClassesData.length === 0) {
+            container.innerHTML = '<div class="warning">No classes assigned. Please contact admin.</div>';
+            return;
+        }
+        
+        container.innerHTML = teacherClassesData.map(cls => `
+            <div class="class-card" onclick="selectClassFromDashboard('${cls.name}')">
+                <div class="class-card-header">
+                    <h3>📚 ${cls.name}</h3>
+                    <div class="student-count-badge">👨‍🎓 ${cls.studentCount} Students</div>
+                </div>
+                <div class="class-card-body">
+                    <div class="subject-list">${cls.subjects.map(s => `<span class="subject-tag">📖 ${s}</span>`).join('')}</div>
+                    <div class="student-preview"><span>👥 Total Enrolled: ${cls.studentCount}</span><span>📋 ${cls.subjects.length} Subjects →</span></div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function renderMarksClasses() {
+        const container = document.getElementById('marksClassContainer');
+        if (teacherClassesData.length === 0) {
+            container.innerHTML = '<div class="warning">No classes assigned. Please contact admin.</div>';
+            return;
+        }
+        
+        container.innerHTML = teacherClassesData.map(cls => `
+            <div class="class-card" data-class="${cls.name}" onclick="selectClassForMarks('${cls.name}')">
+                <div class="class-card-header">
+                    <h3>📚 ${cls.name}</h3>
+                    <div class="student-count-badge">👨‍🎓 ${cls.studentCount} Students</div>
+                </div>
+                <div class="class-card-body">
+                    <div class="subject-list">${cls.subjects.map(s => `<span class="subject-tag">📖 ${s}</span>`).join('')}</div>
+                    <div class="student-preview"><span>👥 Total: ${cls.studentCount} students</span><span>✏️ Click to enter marks →</span></div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function renderUploadClasses() {
+        const container = document.getElementById('uploadClassContainer');
+        if (teacherClassesData.length === 0) {
+            container.innerHTML = '<div class="warning">No classes assigned. Please contact admin.</div>';
+            return;
+        }
+        
+        container.innerHTML = teacherClassesData.map(cls => `
+            <div class="class-card" data-class="${cls.name}" onclick="selectClassForUpload('${cls.name}')">
+                <div class="class-card-header">
+                    <h3>📚 ${cls.name}</h3>
+                    <div class="student-count-badge">👨‍🎓 ${cls.studentCount} Students</div>
+                </div>
+                <div class="class-card-body">
+                    <div class="subject-list">${cls.subjects.map(s => `<span class="subject-tag">📖 ${s}</span>`).join('')}</div>
+                    <div class="student-preview"><span>👥 Total: ${cls.studentCount} students</span><span>📎 Upload papers →</span></div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // ==================== SECTION NAVIGATION ====================
+    function selectClassFromDashboard(className) {
+        showSection('marks');
+        selectClassForMarks(className);
+    }
+    
+    function selectClassForMarks(className) {
+        document.querySelectorAll('#marksClassContainer .class-card').forEach(card => card.classList.remove('active'));
+        const selectedCard = document.querySelector(`#marksClassContainer .class-card[data-class="${className}"]`);
+        if (selectedCard) selectedCard.classList.add('active');
+        
+        currentClass = className;
+        const classData = teacherClassesData.find(c => c.name === currentClass);
+        
+        if (classData && classData.subjects.length > 0) {
+            document.getElementById('subjectSelectorContainer').style.display = 'block';
+            document.getElementById('subjectButtonsModern').innerHTML = classData.subjects.map((subject, index) => 
+                `<button class="subject-btn-modern ${index === 0 ? 'active' : ''}" onclick="selectSubjectForMarks('${subject}')">📖 ${subject}</button>`
+            ).join('');
+            currentSubject = classData.subjects[0];
+            loadStudentsForClass();
+        } else {
+            document.getElementById('subjectSelectorContainer').style.display = 'none';
+        }
+    }
+    
+    function selectSubjectForMarks(subject) {
+        currentSubject = subject;
+        document.querySelectorAll('#subjectButtonsModern .subject-btn-modern').forEach(btn => {
+            if (btn.textContent.includes(subject)) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+        loadStudentsForClass();
+    }
+    
+    function selectClassForUpload(className) {
+        document.querySelectorAll('#uploadClassContainer .class-card').forEach(card => card.classList.remove('active'));
+        const selectedCard = document.querySelector(`#uploadClassContainer .class-card[data-class="${className}"]`);
+        if (selectedCard) selectedCard.classList.add('active');
+        
+        currentClass = className;
+        document.getElementById('uploadFormContainer').style.display = 'block';
+        loadStudentsForUpload();
+    }
+    
+    // ==================== LOAD STUDENTS FOR MARKS ====================
+    async function loadCurrentClassStudents() {
+        if (currentClass) await loadStudentsForClass();
+    }
+    
+    async function loadStudentsForClass() {
+        if (!currentClass || !currentSubject) return;
+        
+        const term = document.getElementById('termSelect').value;
+        document.getElementById('marksStatus').innerHTML = '<div class="success">Loading students...</div>';
+        
+        try {
+            const classData = teacherClassesData.find(c => c.name === currentClass);
+            if (!classData) return;
+            
+            studentsData = classData.students.filter(student => 
+                student.subjects && student.subjects.toLowerCase().includes(currentSubject.toLowerCase())
+            );
+            filteredStudents = [...studentsData];
+            
+            if (studentsData.length === 0) {
+                document.getElementById('studentsMarksListModern').innerHTML = `<div class="warning">⚠️ No students found taking "${currentSubject}" in class "${currentClass}".</div>`;
+                document.getElementById('marksStatus').innerHTML = '<div class="warning">No students found for this subject/class.</div>';
+                document.getElementById('searchBox').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('searchBox').style.display = 'block';
+            document.getElementById('studentCountDisplay').innerHTML = `👥 Total Students: ${studentsData.length}`;
+            await renderStudentsMarksModern(term);
+        } catch(e) {
+            console.error('Error loading students:', e);
+        }
+    }
+    
+    function filterStudents() {
+        const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase();
+        filteredStudents = searchTerm ? studentsData.filter(s => s.first_name.toLowerCase().includes(searchTerm) || s.last_name.toLowerCase().includes(searchTerm)) : [...studentsData];
+        document.getElementById('studentCountDisplay').innerHTML = `👥 Showing ${filteredStudents.length} of ${studentsData.length} students`;
+        renderStudentsMarksModern(document.getElementById('termSelect').value);
+    }
+    
+    async function renderStudentsMarksModern(term) {
+        const container = document.getElementById('studentsMarksListModern');
+        let html = `<h4 style="margin-bottom:20px;">✏️ Entering Marks for: <strong style="color:#3b82f6">${currentSubject}</strong> in <strong style="color:#8b5cf6">${currentClass}</strong></h4>`;
+        
+        for (let student of filteredStudents) {
+            const marksRes = await fetch(`/api/marks/student/${student.id}/${currentSubject}/${term}`);
+            let marks = await marksRes.json();
+            
+            html += `
+                <div class="student-card-modern" data-student-id="${student.id}">
+                    <div class="student-header-modern">
+                        <div><div class="student-name-modern">👨‍🎓 ${student.first_name} ${student.last_name}</div><div class="student-id">ID: ${student.id} | Parent: ${student.parent_name}</div></div>
+                        ${marks?.is_locked ? '<span class="subject-tag" style="background:#ef4444; color:white;">🔒 Locked</span>' : '<span class="subject-tag" style="background:#10b981; color:white;">✏️ Editable</span>'}
+                    </div>
+                    <div class="marks-grid-modern">
+                        <div class="mark-field"><label>📝 Test 1 (max:30)</label><input type="number" class="class_test1" value="${marks?.class_test1 || 0}" step="0.5" min="0" max="30" ${marks?.is_locked ? 'disabled' : ''} onchange="validateAndLimitInput(this, 30)"></div>
+                        <div class="mark-field"><label>👥 Group Work (max:20)</label><input type="number" class="group_work" value="${marks?.group_work || 0}" step="0.5" min="0" max="20" ${marks?.is_locked ? 'disabled' : ''} onchange="validateAndLimitInput(this, 20)"></div>
+                        <div class="mark-field"><label>📁 Project (max:20)</label><input type="number" class="project" value="${marks?.project || 0}" step="0.5" min="0" max="20" ${marks?.is_locked ? 'disabled' : ''} onchange="validateAndLimitInput(this, 20)"></div>
+                        <div class="mark-field"><label>📝 Test 2 (max:30)</label><input type="number" class="class_test2" value="${marks?.class_test2 || 0}" step="0.5" min="0" max="30" ${marks?.is_locked ? 'disabled' : ''} onchange="validateAndLimitInput(this, 30)"></div>
+                        <div class="mark-field"><label>📖 Exam (max:100)</label><input type="number" class="exam" value="${marks?.exam || 0}" step="0.5" min="0" max="100" ${marks?.is_locked ? 'disabled' : ''} onchange="validateAndLimitInput(this, 100)"></div>
+                    </div>
+                    <div class="score-summary">
+                        <div class="ca-exam-scores">
+                            <div class="score-item"><div class="score-label">📊 CA Score</div><div class="score-value ca-display">${marks?.ca_score || 0}</div><div style="font-size:10px;">/ 50</div></div>
+                            <div class="score-item"><div class="score-label">📖 Exam Score</div><div class="score-value exam-display">${marks?.exam_score || 0}</div><div style="font-size:10px;">/ 50</div></div>
+                        </div>
+                        <div class="total-score"><div class="total-label">🎯 TOTAL</div><div class="total-value total-display">${marks?.total || 0}</div><div style="font-size:10px;">/ 100</div></div>
+                        ${!marks?.is_locked ? `<button class="btn-save" onclick="saveMarksModern(${student.id})">💾 Save Marks</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+        document.querySelectorAll('.student-card-modern').forEach(card => {
+            card.querySelectorAll('input').forEach(input => input.addEventListener('input', () => calculateScoresModern(card)));
+            calculateScoresModern(card);
+        });
+        document.getElementById('marksStatus').innerHTML = `<div class="success">✓ Loaded ${studentsData.length} students for ${currentSubject} in ${currentClass}</div>`;
+    }
+    
+    function calculateScoresModern(card) {
+        const class_test1 = parseFloat(card.querySelector('.class_test1')?.value) || 0;
+        const group_work = parseFloat(card.querySelector('.group_work')?.value) || 0;
+        const project = parseFloat(card.querySelector('.project')?.value) || 0;
+        const class_test2 = parseFloat(card.querySelector('.class_test2')?.value) || 0;
+        const exam = parseFloat(card.querySelector('.exam')?.value) || 0;
+        
+        const ca_score = (class_test1 + group_work + project + class_test2) / 2;
+        const exam_score = exam / 2;
+        const total = ca_score + exam_score;
+        
+        const caDisplay = card.querySelector('.ca-display');
+        const examDisplay = card.querySelector('.exam-display');
+        const totalDisplay = card.querySelector('.total-display');
+        
+        if (caDisplay) caDisplay.innerText = ca_score.toFixed(2);
+        if (examDisplay) examDisplay.innerText = exam_score.toFixed(2);
+        if (totalDisplay) totalDisplay.innerText = total.toFixed(2);
+    }
+    
+    function validateAndLimitInput(input, max) {
+        let value = parseFloat(input.value);
+        if (isNaN(value)) value = 0;
+        if (value > max) { input.value = max; alert(`Cannot exceed ${max}`); }
+        if (value < 0) input.value = 0;
+        return parseFloat(input.value);
+    }
+    
+    window.validateAndLimitInput = validateAndLimitInput;
+    
+    async function saveMarksModern(studentId) {
+        const term = document.getElementById('termSelect').value;
+        const card = document.querySelector(`.student-card-modern[data-student-id="${studentId}"]`);
+        
+        let class_test1 = parseFloat(card.querySelector('.class_test1').value) || 0;
+        let group_work = parseFloat(card.querySelector('.group_work').value) || 0;
+        let project = parseFloat(card.querySelector('.project').value) || 0;
+        let class_test2 = parseFloat(card.querySelector('.class_test2').value) || 0;
+        let exam = parseFloat(card.querySelector('.exam').value) || 0;
+        
+        let warnings = [];
+        if (class_test1 > 30) { class_test1 = 30; warnings.push("Test 1 capped to 30"); }
+        if (group_work > 20) { group_work = 20; warnings.push("Group Work capped to 20"); }
+        if (project > 20) { project = 20; warnings.push("Project capped to 20"); }
+        if (class_test2 > 30) { class_test2 = 30; warnings.push("Test 2 capped to 30"); }
+        if (exam > 100) { exam = 100; warnings.push("Exam capped to 100"); }
+        
+        card.querySelector('.class_test1').value = class_test1;
+        card.querySelector('.group_work').value = group_work;
+        card.querySelector('.project').value = project;
+        card.querySelector('.class_test2').value = class_test2;
+        card.querySelector('.exam').value = exam;
+        
+        const data = {
+            student_id: studentId, teacher_id: teacherId, subject: currentSubject, term: term,
+            class_test1: class_test1, group_work: group_work, project: project,
+            class_test2: class_test2, exam: exam
+        };
+        
+        const res = await fetch('/api/marks', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(data) 
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            let message = `✅ Marks saved!\nCA: ${result.ca_score.toFixed(2)}/50 | Exam: ${result.exam_score.toFixed(2)}/50 | Total: ${result.total.toFixed(2)}/100`;
+            if (result.warnings && result.warnings.length > 0) {
+                message += `\n\n⚠️ Warnings:\n${result.warnings.join('\n')}`;
+            }
+            alert(message);
+            await loadStudentsForClass();
+        } else {
+            alert('❌ Error: ' + (result.error || 'Unknown error'));
+        }
+    }
+    
+    async function sendAllToAdmin() {
+        if (confirm('⚠️ Send all recorded marks to Admin?\n\nAfter sending, you will NOT be able to edit any marks until the Admin confirms them.\n\nAre you sure?')) {
+            const term = document.getElementById('termSelect').value;
+            const res = await fetch('/api/teacher/send_to_admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teacher_id: teacherId, term: term }) });
+            const result = await res.json();
+            if (result.success) { alert('✅ All marks sent to Admin successfully!'); await loadStudentsForClass(); }
+            else alert('❌ Error sending marks');
+        }
+    }
+    
+    // ==================== UPLOAD EXAM PAPER FUNCTIONS ====================
+    async function loadStudentsForUpload() {
+        if (!currentClass) return;
+        const classData = teacherClassesData.find(c => c.name === currentClass);
+        if (classData) {
+            const select = document.getElementById('uploadStudentSelect');
+            select.innerHTML = '<option value="">Select Student</option>' + classData.students.map(s => `<option value="${s.id}">${s.first_name} ${s.last_name}</option>`).join('');
+            select.onchange = loadSubjectsForUpload;
+        }
+    }
+    
+    async function loadSubjectsForUpload() {
+        const studentId = document.getElementById('uploadStudentSelect').value;
+        if (!studentId) return;
+        const student = teacherClassesData.flatMap(c => c.students).find(s => s.id == studentId);
+        if (student && student.subjects) {
+            const subjects = student.subjects.split(',').map(s => s.trim());
+            const select = document.getElementById('uploadSubjectSelect');
+            select.innerHTML = '<option value="">Select Subject</option>' + subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+        }
+    }
+    
+    async function uploadExamPaper() {
+        const studentId = document.getElementById('uploadStudentSelect').value;
+        const subject = document.getElementById('uploadSubjectSelect').value;
+        const fileInput = document.getElementById('examFile');
+        const term = document.getElementById('uploadTermSelect').value;
+        
+        if (!studentId) { alert('Please select a student'); return; }
+        if (!subject) { alert('Please select a subject'); return; }
+        if (!fileInput.files[0]) { alert('Please select a file to upload'); return; }
+        
+        const formData = new FormData();
+        formData.append('student_id', studentId);
+        formData.append('teacher_id', teacherId);
+        formData.append('subject', subject);
+        formData.append('term', term);
+        formData.append('file', fileInput.files[0]);
+        
+        document.getElementById('uploadStatus').innerHTML = '<div class="success">Uploading...</div>';
+        const res = await fetch('/api/upload_exam_paper', { method: 'POST', body: formData });
+        const result = await res.json();
+        
+        if (result.success) {
+            document.getElementById('uploadStatus').innerHTML = '<div class="success">✅ Exam paper uploaded successfully! Admin will verify soon.</div>';
+            fileInput.value = '';
+            setTimeout(() => document.getElementById('uploadStatus').innerHTML = '', 3000);
+        } else {
+            document.getElementById('uploadStatus').innerHTML = '<div class="warning">❌ Upload failed: ' + (result.error || 'Unknown error') + '</div>';
+        }
+    }
+    
+    // ==================== VERIFICATION STATUS FUNCTIONS ====================
+    async function loadVerificationStatus() {
+        const term = document.getElementById('verifyTermSelect').value;
+        const res = await fetch(`/api/teacher/verification_status/${teacherId}/${term}`);
+        const verifications = await res.json();
+        
+        const container = document.getElementById('verificationStatusList');
+        if (verifications.length === 0) {
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #64748b;">No exam papers uploaded yet</div>';
+            return;
+        }
+        
+        container.innerHTML = `
+            <table style="width:100%; border-collapse: collapse;">
+                <thead><tr style="background: #f8fafc;">
+                    <th style="padding: 12px; text-align: left;">Student</th>
+                    <th style="padding: 12px; text-align: left;">Subject</th>
+                    <th style="padding: 12px; text-align: left;">Status</th>
+                    <th style="padding: 12px; text-align: left;">Action</th>
+                </tr></thead>
+                <tbody>
+                    ${verifications.map(v => `
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 12px;">${v.student_name}</td>
+                            <td style="padding: 12px;">${v.subject}</td>
+                            <td style="padding: 12px;">${v.verified ? (v.marks_match ? '<span style="color:#10b981;">✓ Verified & Matched</span>' : '<span style="color:#ef4444;">✗ Verification Failed</span>') : '<span style="color:#f59e0b;">⏳ Pending</span>'}</td>
+                            <td style="padding: 12px;">${v.verified ? `<button class="subject-tag" style="background:#3b82f6; cursor:pointer;" onclick="viewExamPaper(${v.paper_id})">📄 View Paper</button>` : '<span class="subject-tag" style="background:#64748b;">Awaiting Admin</span>'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    async function viewExamPaper(paperId) {
+        window.open(`/api/view_exam_paper/${paperId}`, '_blank');
+    }
+    
+    // ==================== STUDENT LIST FUNCTIONS ====================
+    async function loadStudentListModern() {
+        let allStudents = [];
+        for (let cls of teacherClassesData) {
+            for (let s of cls.students) {
+                if (!allStudents.find(ex => ex.id === s.id)) allStudents.push({...s, className: cls.name});
+            }
+        }
+        allStudentsList = allStudents;
+        renderStudentListModern(allStudentsList);
+    }
+    
+    function renderStudentListModern(students) {
+        const container = document.getElementById('studentsListModern');
+        if (students.length === 0) { container.innerHTML = '<div class="warning">No students assigned to your classes.</div>'; return; }
+        
+        container.innerHTML = students.map(student => `
+            <div class="student-card-modern">
+                <div class="student-header-modern">
+                    <div><div class="student-name-modern">👨‍🎓 ${student.first_name} ${student.last_name}</div><div class="student-id">Class: ${student.className} | Age: ${student.age}</div></div>
+                </div>
+                <div style="margin-top:10px;"><div>👨‍👩 Parent: ${student.parent_name} (${student.parent_phone})</div><div>📖 Subjects: ${student.subjects || 'Not assigned'}</div></div>
+            </div>
+        `).join('');
+    }
+    
+    function filterStudentList() {
+        const searchTerm = document.getElementById('studentListSearch').value.toLowerCase();
+        const filtered = searchTerm ? allStudentsList.filter(s => s.first_name.toLowerCase().includes(searchTerm) || s.last_name.toLowerCase().includes(searchTerm)) : allStudentsList;
+        renderStudentListModern(filtered);
+    }
+    
+    // ==================== SECTION SHOW ====================
+    function showSection(section) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.getElementById(section).classList.add('active');
+        if (section === 'students') loadStudentListModern();
+        if (section === 'verification') loadVerificationStatus();
+        if (section === 'upload') renderUploadClasses();
+    }
+    
+    // ==================== ANNOUNCEMENTS ====================
+    async function loadAnnouncements() {
+        const role = 'teacher';
+        const response = await fetch(`/api/announcements/${role}`);
+        const announcements = await response.json();
+        
+        const container = document.getElementById('announcementsContainer');
+        if (container && announcements.length > 0) {
+            container.style.display = 'block';
+            container.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="margin: 0;">📢 Announcements</h4>
+                    <button onclick="document.getElementById('announcementsContainer').style.display='none'" 
+                            style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+                </div>
+                ${announcements.map(a => `
+                    <div class="announcement-item">
+                        <div class="announcement-title">${escapeHtml(a.title)}</div>
+                        <div class="announcement-content">${escapeHtml(a.content)}</div>
+                        ${a.image_data ? `<img src="data:${a.image_type};base64,${a.image_data}" class="announcement-image">` : ''}
+                        <small style="color: #999; display: block; margin-top: 5px;">${new Date(a.created_at).toLocaleDateString()}</small>
+                    </div>
+                `).join('')}
+            `;
+        }
+    }
+    
+    // ==================== HOLIDAY GREETINGS ====================
+    async function loadHolidayGreeting() {
+        const response = await fetch('/api/holiday/current');
+        const greeting = await response.json();
+        
+        if (greeting) {
+            const modal = document.getElementById('holidayGreetingModal');
+            if (modal) {
+                modal.innerHTML = `
+                    <div class="holiday-greeting-card" onclick="this.style.display='none'">
+                        <h2>${greeting.holiday} 🎉</h2>
+                        <p>${greeting.message}</p>
+                        ${greeting.image_data ? `<img src="data:${greeting.image_type};base64,${greeting.image_data}" style="max-width: 100%; border-radius: 10px; margin: 10px 0;">` : ''}
+                        <button class="close-greeting" onclick="event.stopPropagation(); this.closest('.holiday-greeting-card').style.display='none'">Close</button>
+                    </div>
+                `;
+                modal.style.display = 'block';
+                
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 10000);
+            }
+        }
+    }
+    
+    // ==================== HOLIDAY EFFECTS ====================
+    function initHolidayEffects() {
+        const style = document.createElement('link');
+        style.rel = 'stylesheet';
+        style.href = '/static/holiday-effects.css';
+        document.head.appendChild(style);
+        
+        fetch('/api/holiday/current')
+            .then(res => res.json())
+            .then(greeting => {
+                if (greeting) {
+                    if (greeting.animation_style === 'christmas') {
+                        createChristmasEffects();
+                    } else if (greeting.animation_style === 'newyear') {
+                        createNewYearEffects();
+                    } else if (greeting.animation_style === 'easter') {
+                        createEasterEffects();
+                    }
+                }
+            });
+    }
+    
+    function createChristmasEffects() {
+        for (let i = 0; i < 100; i++) {
+            const snowflake = document.createElement('div');
+            snowflake.className = 'snowflake';
+            snowflake.innerHTML = ['❄️', '❄️', '❅', '❆'][Math.floor(Math.random() * 4)];
+            snowflake.style.left = Math.random() * 100 + '%';
+            snowflake.style.fontSize = (Math.random() * 20 + 10) + 'px';
+            snowflake.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            snowflake.style.animationDelay = Math.random() * 5 + 's';
+            snowflake.style.opacity = Math.random() * 0.5 + 0.3;
+            document.body.appendChild(snowflake);
+        }
+        
+        const treeContainer = document.createElement('div');
+        treeContainer.className = 'christmas-tree-3d';
+        treeContainer.innerHTML = `
+            <div class="tree-container">
+                <div class="tree-base"></div>
+                <div class="tree-level-1"></div>
+                <div class="tree-level-2"></div>
+                <div class="tree-level-3"></div>
+                <div class="tree-star">⭐</div>
+            </div>
+        `;
+        document.body.appendChild(treeContainer);
+        
+        const lightPositions = [
+            { top: '40%', left: '45%' }, { top: '35%', left: '55%' },
+            { top: '55%', left: '42%' }, { top: '50%', left: '58%' },
+            { top: '70%', left: '48%' }, { top: '65%', left: '52%' }
+        ];
+        
+        lightPositions.forEach((pos, index) => {
+            const light = document.createElement('div');
+            light.className = 'christmas-light';
+            light.style.position = 'fixed';
+            light.style.bottom = pos.top;
+            light.style.right = pos.left;
+            light.style.backgroundColor = ['#ff0000', '#00ff00', '#ffd700', '#ff69b4'][index % 4];
+            light.style.animationDelay = (index * 0.2) + 's';
+            document.body.appendChild(light);
+        });
+    }
+    
+    function createNewYearEffects() {
+        document.body.addEventListener('click', (e) => {
+            for (let i = 0; i < 20; i++) {
+                const firework = document.createElement('div');
+                firework.className = 'firework';
+                firework.style.left = e.clientX + (Math.random() - 0.5) * 100 + 'px';
+                firework.style.top = e.clientY + (Math.random() - 0.5) * 100 + 'px';
+                firework.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                document.body.appendChild(firework);
+                setTimeout(() => firework.remove(), 1000);
+            }
+        });
+        
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.left = Math.random() * 100 + '%';
+            confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+            confetti.style.animationDuration = (Math.random() * 2 + 1) + 's';
+            confetti.style.animationDelay = Math.random() * 5 + 's';
+            document.body.appendChild(confetti);
+        }
+    }
+    
+    function createEasterEffects() {
+        for (let i = 0; i < 30; i++) {
+            const egg = document.createElement('div');
+            egg.className = 'easter-egg';
+            egg.innerHTML = ['🥚', '🐣', '🐰', '🌸'][Math.floor(Math.random() * 4)];
+            egg.style.left = Math.random() * 100 + '%';
+            egg.style.top = Math.random() * 100 + '%';
+            egg.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            egg.style.animationDelay = Math.random() * 5 + 's';
+            document.body.appendChild(egg);
+        }
+        
+        const bunny = document.createElement('div');
+        bunny.className = 'easter-bunny';
+        bunny.innerHTML = '🐰';
+        document.body.appendChild(bunny);
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // ==================== INITIALIZE ====================
+    loadSchoolInfo();
+    loadTeacherInfo();
+    loadAnnouncements();
+    loadHolidayGreeting();
+    initHolidayEffects();
+</script>
+</body>
+</html>

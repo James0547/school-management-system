@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Student - School Management</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .form-container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .form-container h2 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .password-requirements {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .password-strength {
+            height: 5px;
+            margin-top: 5px;
+            border-radius: 3px;
+            transition: all 0.3s;
+        }
+        .strength-weak { background: #e74c3c; width: 33%; }
+        .strength-medium { background: #f39c12; width: 66%; }
+        .strength-strong { background: #27ae60; width: 100%; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>Add New Student</h2>
+        <form id="addStudentForm">
+            <div class="form-group">
+                <label>First Name *</label>
+                <input type="text" name="first_name" required>
+            </div>
+            <div class="form-group">
+                <label>Last Name *</label>
+                <input type="text" name="last_name" required>
+            </div>
+            <div class="form-group">
+                <label>Age *</label>
+                <input type="number" name="age" required>
+            </div>
+            <div class="form-group">
+                <label>Parent Name *</label>
+                <input type="text" name="parent_name" required>
+            </div>
+            <div class="form-group">
+                <label>Parent Phone *</label>
+                <input type="text" name="parent_phone" required>
+            </div>
+            <div class="form-group">
+                <label>Parent Email</label>
+                <input type="email" name="parent_email">
+            </div>
+            <div class="form-group">
+                <label>Student Birthday</label>
+                <input type="date" name="birthday">
+            </div>
+            <div class="form-group">
+                <label>Class *</label>
+                <select name="class_name" id="classSelect" required></select>
+            </div>
+            <div class="form-group">
+                <label>Subjects/Courses (comma separated)</label>
+                <input type="text" name="subjects" placeholder="Math, English, Science, History">
+            </div>
+            <div class="form-group">
+                <label>Create Password *</label>
+                <input type="password" name="password" id="password" required placeholder="Create a strong password">
+                <div class="password-requirements">
+                    Password must be at least 6 characters
+                </div>
+                <div class="password-strength" id="passwordStrength"></div>
+            </div>
+            <div class="form-group">
+                <label>Confirm Password *</label>
+                <input type="password" id="confirmPassword" required placeholder="Confirm your password">
+            </div>
+            <button type="submit" class="btn btn-primary">Add Student</button>
+            <a href="/admin/dashboard" class="btn">Back to Dashboard</a>
+        </form>
+    </div>
+    <div class="marquee-bottom">
+        <marquee>System designed by JSLY @ 2026</marquee>
+    </div>
+    <script>
+        async function loadClasses() {
+            const res = await fetch('/api/classes');
+            const classes = await res.json();
+            const select = document.getElementById('classSelect');
+            select.innerHTML = classes.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        }
+        
+        // Password strength checker
+        const passwordInput = document.getElementById('password');
+        const confirmInput = document.getElementById('confirmPassword');
+        const strengthDiv = document.getElementById('passwordStrength');
+        
+        function checkPasswordStrength(password) {
+            let strength = 0;
+            if (password.length >= 6) strength++;
+            if (password.length >= 8) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^A-Za-z0-9]/.test(password)) strength++;
+            
+            strengthDiv.className = 'password-strength';
+            if (strength <= 2) {
+                strengthDiv.classList.add('strength-weak');
+                return 'Weak';
+            } else if (strength <= 4) {
+                strengthDiv.classList.add('strength-medium');
+                return 'Medium';
+            } else {
+                strengthDiv.classList.add('strength-strong');
+                return 'Strong';
+            }
+        }
+        
+        passwordInput.addEventListener('input', function() {
+            checkPasswordStrength(this.value);
+        });
+        
+        document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (password !== confirmPassword) {
+                alert('Passwords do not match!');
+                return;
+            }
+            
+            if (password.length < 6) {
+                alert('Password must be at least 6 characters long!');
+                return;
+            }
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            
+            const res = await fetch('/api/students', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if(res.ok) {
+                alert('Student added successfully! Student can now login with their password.');
+                window.location.href = '/admin/dashboard';
+            } else {
+                const error = await res.json();
+                alert('Error adding student: ' + (error.error || 'Unknown error'));
+            }
+        });
+        
+        loadClasses();
+    </script>
+</body>
+</html>
