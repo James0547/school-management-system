@@ -1,27 +1,37 @@
-# main.py - COMPLETE WORKING VERSION
-
+# main.py - PostgreSQL Compatible Version (Works with both SQLite and PostgreSQL)
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
+import os
 from datetime import datetime
 from pathlib import Path
 import io
 import zipfile
 import sys
-import os
 import base64
 import json
 import hashlib
 import time
+import re
+import asyncio
+from typing import Optional
 
-# Set UTF-8 encoding for console output
-if sys.platform == 'win32':
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-    except:
-        pass
+# ==================== DATABASE MODE DETECTION ====================
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+USE_POSTGRES = DATABASE_URL != ''
+
+# Only import asyncpg if we're using PostgreSQL
+if USE_POSTGRES:
+    import asyncpg
+    print("✅ asyncpg loaded for PostgreSQL support")
+else:
+    print("📁 Using SQLite (no asyncpg needed)")
+
+print(f"🔧 Database mode: {'PostgreSQL (Production)' if USE_POSTGRES else 'SQLite (Development)'}")
+
 
 # ==================== PATH FUNCTIONS ====================
 def get_base_dir():
@@ -45,6 +55,15 @@ def get_static_path():
 # ==================== CREATE APP ====================
 app = FastAPI()
 
+# Add CORS for production
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # ==================== SETUP DIRECTORIES ====================
 BASE_DIR = get_base_dir()
 TEMPLATES_DIR = get_template_path()
@@ -53,6 +72,7 @@ STATIC_DIR = get_static_path()
 if not getattr(sys, 'frozen', False):
     STATIC_DIR.mkdir(exist_ok=True)
     TEMPLATES_DIR.mkdir(exist_ok=True)
+
 
 # ==================== MOUNT STATIC FILES ====================
 if STATIC_DIR.exists():
@@ -90,20 +110,317 @@ class SimpleCache:
 
 cache = SimpleCache()
 
-def get_db():
+# ==================== DATABASE CONNECTION FUNCTIONS ====================
+async def get_postgres_connection():
+    """Get PostgreSQL connection"""
+    return await asyncpg.connect(DATABASE_URL)
+
+def get_sqlite_connection():
+    """Get SQLite connection"""
     conn = sqlite3.connect(str(DB_PATH))
     conn.text_factory = str
     conn.row_factory = sqlite3.Row
     return conn
 
-# ==================== COMPLETE DATABASE INITIALIZATION ====================
-def init_db():
-    conn = get_db()
+async def execute_query(query: str, params: tuple = None):
+    """Execute query based on database mode"""
+    if USE_POSTGRES:
+        conn = await get_postgres_connection()
+        try:
+            if params:
+                return await conn.fetch(query, *params)
+            else:
+                return await conn.fetch(query)
+        finally:
+            await conn.close()
+    else:
+        conn = get_sqlite_connection()
+        try:
+            cursor = conn.cursor()
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            return cursor.fetchall()
+        finally:
+            conn.close()
+
+async def execute_write(query: str, params: tuple = None):
+    """Execute write query based on database mode"""
+    if USE_POSTGRES:
+        conn = await get_postgres_connection()
+        try:
+            if params:
+                return await conn.execute(query, *params)
+            else:
+                return await conn.execute(query)
+        finally:
+            await conn.close()
+    else:
+        conn = get_sqlite_connection()
+        try:
+            cursor = conn.cursor()
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            conn.commit()
+            return cursor.rowcount
+        finally:
+            conn.close()
+
+async def execute_scalar(query: str, params: tuple = None):
+    """Execute query and return single value"""
+    if USE_POSTGRES:
+        conn = await get_postgres_connection()
+        try:
+            if params:
+                result = await conn.fetchval(query, *params)
+            else:
+                result = await conn.fetchval(query)
+            return result
+        finally:
+            await conn.close()
+    else:
+        conn = get_sqlite_connection()
+        try:
+            cursor = conn.cursor()
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            row = cursor.fetchone()
+            return row[0] if row else None
+        finally:
+            conn.close()
+
+def get_db():
+    """Get SQLite connection (for backward compatibility)"""
+    return get_sqlite_connection()
+
+
+# ==================== DATABASE INITIALIZATION ====================
+async def init_db_async():
+    """Initialize database tables asynchronously for PostgreSQL"""
+    if USE_POSTGRES:
+        conn = await get_postgres_connection()
+        try:
+            # Create tables for PostgreSQL
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS app_auth (
+                    id SERIAL PRIMARY KEY,
+                    is_unlocked INTEGER DEFAULT 0
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS school (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT,
+                    location TEXT,
+                    phone TEXT,
+                    marquee TEXT
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS class_list (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT UNIQUE,
+                    description TEXT
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS teachers (
+                    id SERIAL PRIMARY KEY,
+                    first_name TEXT,
+                    last_name TEXT,
+                    phone TEXT,
+                    email TEXT,
+                    subjects TEXT,
+                    class_teaching TEXT,
+                    password TEXT
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS teacher_classes (
+                    id SERIAL PRIMARY KEY,
+                    teacher_id INTEGER,
+                    class_name TEXT,
+                    subject TEXT
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS students (
+                    id SERIAL PRIMARY KEY,
+                    first_name TEXT,
+                    last_name TEXT,
+                    age INTEGER,
+                    parent_name TEXT,
+                    parent_phone TEXT,
+                    parent_email TEXT,
+                    class_name TEXT,
+                    subjects TEXT,
+                    enrollment_date TIMESTAMP,
+                    password TEXT DEFAULT 'student123',
+                    birthday DATE
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS marks (
+                    id SERIAL PRIMARY KEY,
+                    student_id INTEGER,
+                    teacher_id INTEGER,
+                    subject TEXT,
+                    class_test1 REAL DEFAULT 0,
+                    group_work REAL DEFAULT 0,
+                    project REAL DEFAULT 0,
+                    class_test2 REAL DEFAULT 0,
+                    exam REAL DEFAULT 0,
+                    ca_score REAL DEFAULT 0,
+                    exam_score REAL DEFAULT 0,
+                    total REAL DEFAULT 0,
+                    term TEXT,
+                    year INTEGER,
+                    is_locked INTEGER DEFAULT 0,
+                    is_confirmed INTEGER DEFAULT 0,
+                    submission_date TIMESTAMP,
+                    UNIQUE(student_id, subject, term)
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS exam_papers (
+                    id SERIAL PRIMARY KEY,
+                    student_id INTEGER,
+                    teacher_id INTEGER,
+                    subject TEXT,
+                    term TEXT,
+                    exam_year INTEGER,
+                    file_name TEXT,
+                    file_data TEXT,
+                    file_hash TEXT,
+                    uploaded_at TIMESTAMP,
+                    verified INTEGER DEFAULT 0,
+                    marks_match INTEGER DEFAULT 0,
+                    auto_verified INTEGER DEFAULT 0,
+                    confidence_score INTEGER DEFAULT 0,
+                    extracted_name TEXT,
+                    extracted_subject TEXT,
+                    extracted_mark INTEGER,
+                    verified_by INTEGER,
+                    verified_at TIMESTAMP,
+                    admin_override INTEGER DEFAULT 0,
+                    admin_notes TEXT
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS verification_logs (
+                    id SERIAL PRIMARY KEY,
+                    paper_id INTEGER,
+                    admin_id INTEGER,
+                    action TEXT,
+                    notes TEXT,
+                    created_at TIMESTAMP
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS announcements (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    image_data TEXT,
+                    image_type TEXT,
+                    announcement_type TEXT DEFAULT 'general',
+                    target_role TEXT DEFAULT 'all',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP,
+                    is_active INTEGER DEFAULT 1,
+                    created_by INTEGER
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS holiday_greetings (
+                    id SERIAL PRIMARY KEY,
+                    holiday_name TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    image_data TEXT,
+                    image_type TEXT,
+                    animation_style TEXT DEFAULT 'snow',
+                    is_active INTEGER DEFAULT 0,
+                    is_manual INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    activated_by INTEGER,
+                    activated_at TIMESTAMP,
+                    expires_at TIMESTAMP
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS term_completion (
+                    id SERIAL PRIMARY KEY,
+                    class_name TEXT,
+                    term TEXT,
+                    academic_year TEXT,
+                    is_completed INTEGER DEFAULT 0,
+                    completed_at TIMESTAMP,
+                    UNIQUE(class_name, term, academic_year)
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS promotion_log (
+                    id SERIAL PRIMARY KEY,
+                    student_id INTEGER,
+                    from_class TEXT,
+                    to_class TEXT,
+                    term TEXT,
+                    academic_year TEXT,
+                    promoted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Insert default data
+            await conn.execute("INSERT INTO app_auth (id, is_unlocked) VALUES (1, 0) ON CONFLICT (id) DO NOTHING")
+            await conn.execute("INSERT INTO school (id, name, location, phone, marquee) VALUES (1, 'School Management System', '', '', 'System designed by JSLY @ 2026') ON CONFLICT (id) DO NOTHING")
+            
+            # Insert sample classes
+            sample_classes = ['Form 1A', 'Form 1B', 'Form 2A', 'Form 2B', 'Form 3A', 'Form 3B']
+            for cls in sample_classes:
+                await conn.execute("INSERT INTO class_list (name) VALUES ($1) ON CONFLICT (name) DO NOTHING", cls)
+            
+            # Insert sample teacher
+            await conn.execute('''
+                INSERT INTO teachers (id, first_name, last_name, phone, email, subjects, class_teaching, password) 
+                VALUES (1, 'John', 'Smith', '1234567890', 'john@school.com', 'Math, English', 'Form 1A, Form 2A', 'teacher123')
+                ON CONFLICT (id) DO NOTHING
+            ''')
+            
+            # Insert sample student
+            await conn.execute('''
+                INSERT INTO students (id, first_name, last_name, age, parent_name, parent_phone, class_name, subjects, enrollment_date) 
+                VALUES (1, 'James', 'Wilson', 15, 'Mr. Wilson', '1234567890', 'Form 1A', 'Math, English, Science', CURRENT_TIMESTAMP)
+                ON CONFLICT (id) DO NOTHING
+            ''')
+            
+            print("✅ PostgreSQL database initialized with all tables!")
+        finally:
+            await conn.close()
+    else:
+        # SQLite initialization
+        init_sqlite_db()
+
+def init_sqlite_db():
+    """Initialize SQLite database with all tables"""
+    conn = get_sqlite_connection()
     c = conn.cursor()
-    
-    # Check if tables exist
-    tables = c.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
-    is_first_run = len(tables) == 0
     
     # Create app_auth table
     c.execute("""
@@ -124,97 +441,8 @@ def init_db():
             marquee TEXT
         )
     """)
-    
-    # Add to init_db() function:
-
-# Create term_completion table
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS term_completion (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            class_name TEXT,
-            term TEXT,
-            academic_year TEXT,
-            is_completed INTEGER DEFAULT 0,
-            completed_at TIMESTAMP,
-            UNIQUE(class_name, term, academic_year)
-        )
-    """)
-
-# Create promotion_log table
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS promotion_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            student_id INTEGER,
-            from_class TEXT,
-            to_class TEXT,
-            term TEXT,
-            academic_year TEXT,
-            promoted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (student_id) REFERENCES students(id)
-        )
-    """)
-    
-    # Add these tables to your init_db() function if not already present
-
-# Create announcements table
-    c.execute("""
-       CREATE TABLE IF NOT EXISTS announcements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            content TEXT NOT NULL,
-            image_data TEXT,
-            image_type TEXT,
-            announcement_type TEXT DEFAULT 'general',
-            target_role TEXT DEFAULT 'all',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            expires_at TIMESTAMP,
-            is_active INTEGER DEFAULT 1,
-            created_by INTEGER
-        )
-    """)
-
-# Create holiday_greetings table
-    c.execute("""
-       CREATE TABLE IF NOT EXISTS holiday_greetings (
-           id INTEGER PRIMARY KEY AUTOINCREMENT,
-           holiday_name TEXT NOT NULL,
-           message TEXT NOT NULL,
-           image_data TEXT,
-           image_type TEXT,
-           animation_style TEXT DEFAULT 'snow',
-           is_active INTEGER DEFAULT 0,
-           is_manual INTEGER DEFAULT 0,
-           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-           activated_by INTEGER,
-           activated_at TIMESTAMP,
-           expires_at TIMESTAMP
-        )
-    """)
-
-# Create holiday_effects table for storing animation settings
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS holiday_effects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            effect_name TEXT UNIQUE,
-            effect_config TEXT,
-            is_active INTEGER DEFAULT 0
-        )
-    """)
-
-# Insert sample holiday effects
-    sample_effects = [
-        ('christmas', '{"snow": true, "tree": true, "lights": true, "stars": true}'),
-        ('newyear', '{"fireworks": true, "confetti": true, "countdown": true}'),
-        ('easter', '{"eggs": true, "bunnies": true, "flowers": true}')
-    ]
-
-    for effect_name, config in sample_effects:
-        c.execute("INSERT OR IGNORE INTO holiday_effects (effect_name, effect_config) VALUES (?, ?)", 
-                  (effect_name, config))
-        
-        
     c.execute("INSERT OR IGNORE INTO school (id, name, location, phone, marquee) VALUES (1, 'School Management System', '', '', 'System designed by JSLY @ 2026')")
- 
+    
     # Create class_list table
     c.execute("""
         CREATE TABLE IF NOT EXISTS class_list (
@@ -272,7 +500,7 @@ def init_db():
     """)
     c.execute("INSERT OR IGNORE INTO students (id, first_name, last_name, age, parent_name, parent_phone, class_name, subjects, enrollment_date) VALUES (1, 'James', 'Wilson', 15, 'Mr. Wilson', '1234567890', 'Form 1A', 'Math, English, Science', '2024-01-15')")
     
-    # Create marks table with UNIQUE constraint
+    # Create marks table
     c.execute("""
         CREATE TABLE IF NOT EXISTS marks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -342,11 +570,13 @@ def init_db():
             title TEXT NOT NULL,
             content TEXT NOT NULL,
             image_data TEXT,
+            image_type TEXT,
             announcement_type TEXT DEFAULT 'general',
             target_role TEXT DEFAULT 'all',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             expires_at TIMESTAMP,
-            is_active INTEGER DEFAULT 1
+            is_active INTEGER DEFAULT 1,
+            created_by INTEGER
         )
     """)
     
@@ -357,8 +587,27 @@ def init_db():
             holiday_name TEXT NOT NULL,
             message TEXT NOT NULL,
             image_data TEXT,
-            is_active INTEGER DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            image_type TEXT,
+            animation_style TEXT DEFAULT 'snow',
+            is_active INTEGER DEFAULT 0,
+            is_manual INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            activated_by INTEGER,
+            activated_at TIMESTAMP,
+            expires_at TIMESTAMP
+        )
+    """)
+    
+    # Create term_completion table
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS term_completion (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_name TEXT,
+            term TEXT,
+            academic_year TEXT,
+            is_completed INTEGER DEFAULT 0,
+            completed_at TIMESTAMP,
+            UNIQUE(class_name, term, academic_year)
         )
     """)
     
@@ -375,25 +624,25 @@ def init_db():
         )
     """)
     
-    # Create term_completion table
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS term_completion (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            class_name TEXT,
-            term TEXT,
-            academic_year TEXT,
-            is_completed INTEGER DEFAULT 0,
-            completed_at TIMESTAMP
-        )
-    """)
-    
     conn.commit()
     conn.close()
-    
-    print("✅ Database initialized with all tables!")
-    return is_first_run
+    print("✅ SQLite database initialized with all tables!")
 
-FIRST_RUN = init_db()
+# Run the appropriate initialization
+def init_database():
+    """Initialize database based on mode"""
+    if USE_POSTGRES:
+        import asyncio
+        asyncio.run(init_db_async())
+    else:
+        init_sqlite_db()
+
+# Call initialization
+init_database()
+
+# For backward compatibility with existing code
+FIRST_RUN = True  # Set to True since we just initialized
+
 
 # ==================== AUTH CHECK ====================
 def check_auth():
@@ -401,28 +650,34 @@ def check_auth():
     if cached_auth is not None:
         return cached_auth
     
-    conn = get_db()
-    c = conn.cursor()
     try:
-        c.execute("SELECT is_unlocked FROM app_auth WHERE id=1")
-        res = c.fetchone()
-        conn.close()
-        is_unlocked = res[0] == 1 if res else False
+        if USE_POSTGRES:
+            conn = asyncio.run(get_postgres_connection())
+            result = asyncio.run(conn.fetchval("SELECT is_unlocked FROM app_auth WHERE id=1"))
+            asyncio.run(conn.close())
+            is_unlocked = result == 1 if result else False
+        else:
+            conn = get_sqlite_connection()
+            c = conn.cursor()
+            c.execute("SELECT is_unlocked FROM app_auth WHERE id=1")
+            res = c.fetchone()
+            conn.close()
+            is_unlocked = res[0] == 1 if res else False
         cache.set('is_unlocked', is_unlocked, 60)
         return is_unlocked
     except Exception as e:
         print(f"Auth error: {e}")
-        conn.close()
         return False
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    skip_paths = ["/unlock", "/static", "/favicon.ico"]
+    skip_paths = ["/unlock", "/static", "/favicon.ico", "/health"]
     if any(request.url.path.startswith(path) for path in skip_paths):
         return await call_next(request)
     if not check_auth():
         return RedirectResponse(url="/unlock", status_code=302)
     return await call_next(request)
+
 
 # ==================== UNLOCK ROUTES ====================
 @app.get("/unlock", response_class=HTMLResponse)
@@ -433,13 +688,19 @@ async def unlock_page(request: Request):
 async def unlock(password: str = Form(...)):
     DEVELOPER_PASSWORD = "HeroHero@1234"
     if password == DEVELOPER_PASSWORD:
-        conn = get_db()
-        conn.execute("UPDATE app_auth SET is_unlocked = 1 WHERE id=1")
-        conn.commit()
-        conn.close()
+        if USE_POSTGRES:
+            conn = await get_postgres_connection()
+            await conn.execute("UPDATE app_auth SET is_unlocked = 1 WHERE id = 1")
+            await conn.close()
+        else:
+            conn = get_sqlite_connection()
+            conn.execute("UPDATE app_auth SET is_unlocked = 1 WHERE id=1")
+            conn.commit()
+            conn.close()
         cache.set('is_unlocked', True, 60)
         return RedirectResponse(url="/", status_code=302)
     return HTMLResponse(content="<h1>Wrong Password</h1><a href='/unlock'>Try Again</a>", status_code=401)
+
 
 # ==================== LOGIN ROUTES ====================
 @app.get("/", response_class=HTMLResponse)
@@ -448,29 +709,44 @@ async def login_page(request: Request):
 
 @app.post("/login")
 async def login(username: str = Form(...), password: str = Form(...), role: str = Form(...)):
-    conn = get_db()
-    c = conn.cursor()
+    if USE_POSTGRES:
+        conn = await get_postgres_connection()
+        try:
+            if role == "admin":
+                if username == "admin" and password == "admin123":
+                    return RedirectResponse(url="/admin/dashboard", status_code=302)
+            elif role == "teacher":
+                teacher = await conn.fetchrow("SELECT id FROM teachers WHERE first_name = $1 AND password = $2", username, password)
+                if teacher:
+                    return RedirectResponse(url=f"/teacher/dashboard/{teacher['id']}", status_code=302)
+            elif role == "student":
+                student = await conn.fetchrow("SELECT id FROM students WHERE first_name = $1 AND password = $2", username, password)
+                if not student:
+                    student = await conn.fetchrow("SELECT id FROM students WHERE first_name = $1 AND last_name = $2", username, password)
+                if student:
+                    return RedirectResponse(url=f"/student/dashboard/{student['id']}", status_code=302)
+        finally:
+            await conn.close()
+    else:
+        conn = get_sqlite_connection()
+        c = conn.cursor()
+        try:
+            if role == "admin":
+                if username == "admin" and password == "admin123":
+                    return RedirectResponse(url="/admin/dashboard", status_code=302)
+            elif role == "teacher":
+                teacher = c.execute("SELECT id FROM teachers WHERE first_name = ? AND password = ?", (username, password)).fetchone()
+                if teacher:
+                    return RedirectResponse(url=f"/teacher/dashboard/{teacher[0]}", status_code=302)
+            elif role == "student":
+                student = c.execute("SELECT id FROM students WHERE first_name = ? AND password = ?", (username, password)).fetchone()
+                if not student:
+                    student = c.execute("SELECT id FROM students WHERE first_name = ? AND last_name = ?", (username, password)).fetchone()
+                if student:
+                    return RedirectResponse(url=f"/student/dashboard/{student[0]}", status_code=302)
+        finally:
+            conn.close()
     
-    if role == "admin":
-        if username == "admin" and password == "admin123":
-            conn.close()
-            return RedirectResponse(url="/admin/dashboard", status_code=302)
-    elif role == "teacher":
-        teacher = c.execute("SELECT id FROM teachers WHERE first_name = ? AND password = ?", (username, password)).fetchone()
-        if teacher:
-            conn.close()
-            return RedirectResponse(url=f"/teacher/dashboard/{teacher[0]}", status_code=302)
-    elif role == "student":
-        # Updated: Login with first_name and custom password
-        student = c.execute("SELECT id FROM students WHERE first_name = ? AND password = ?", (username, password)).fetchone()
-        if not student:
-            # Fallback: Try with last_name as password (for existing students)
-            student = c.execute("SELECT id FROM students WHERE first_name = ? AND last_name = ?", (username, password)).fetchone()
-        if student:
-            conn.close()
-            return RedirectResponse(url=f"/student/dashboard/{student[0]}", status_code=302)
-    
-    conn.close()
     return HTMLResponse("Invalid credentials")
 
 # ==================== DASHBOARD ROUTES ====================
@@ -486,31 +762,52 @@ async def teacher_dashboard(request: Request, teacher_id: int):
 async def student_dashboard(request: Request, student_id: int):
     return templates.TemplateResponse("student_dashboard.html", {"request": request, "student_id": student_id})
 
-# ==================== API ROUTES ====================
+
+# ==================== SIMPLE API ROUTES (PostgreSQL Compatible) ====================
 @app.get("/api/school")
 async def get_school():
-    conn = get_db()
-    school = conn.execute("SELECT name, location, phone, marquee FROM school WHERE id=1").fetchone()
-    conn.close()
-    return dict(school) if school else {"name": "School Management", "location": "", "phone": "", "marquee": ""}
+    if USE_POSTGRES:
+        conn = await get_postgres_connection()
+        school = await conn.fetchrow("SELECT name, location, phone, marquee FROM school WHERE id=1")
+        await conn.close()
+        return dict(school) if school else {"name": "School Management", "location": "", "phone": "", "marquee": ""}
+    else:
+        conn = get_sqlite_connection()
+        school = conn.execute("SELECT name, location, phone, marquee FROM school WHERE id=1").fetchone()
+        conn.close()
+        return dict(school) if school else {"name": "School Management", "location": "", "phone": "", "marquee": ""}
 
 @app.post("/api/school")
 async def update_school(data: dict):
-    conn = get_db()
-    conn.execute("UPDATE school SET name=?, location=?, phone=?, marquee=? WHERE id=1", 
-                (data.get('name', ''), data.get('location', ''), data.get('phone', ''), data.get('marquee', '')))
-    conn.commit()
-    conn.close()
+    if USE_POSTGRES:
+        conn = await get_postgres_connection()
+        await conn.execute("UPDATE school SET name=$1, location=$2, phone=$3, marquee=$4 WHERE id=1",
+                          data.get('name', ''), data.get('location', ''), data.get('phone', ''), data.get('marquee', ''))
+        await conn.close()
+    else:
+        conn = get_sqlite_connection()
+        conn.execute("UPDATE school SET name=?, location=?, phone=?, marquee=? WHERE id=1", 
+                    (data.get('name', ''), data.get('location', ''), data.get('phone', ''), data.get('marquee', '')))
+        conn.commit()
+        conn.close()
     return {"success": True}
 
 @app.get("/api/stats")
 async def get_stats():
-    conn = get_db()
-    total_students = conn.execute("SELECT COUNT(*) FROM students").fetchone()[0]
-    total_teachers = conn.execute("SELECT COUNT(*) FROM teachers").fetchone()[0]
-    total_classes = conn.execute("SELECT COUNT(*) FROM class_list").fetchone()[0]
-    conn.close()
+    if USE_POSTGRES:
+        conn = await get_postgres_connection()
+        total_students = await conn.fetchval("SELECT COUNT(*) FROM students")
+        total_teachers = await conn.fetchval("SELECT COUNT(*) FROM teachers")
+        total_classes = await conn.fetchval("SELECT COUNT(*) FROM class_list")
+        await conn.close()
+    else:
+        conn = get_sqlite_connection()
+        total_students = conn.execute("SELECT COUNT(*) FROM students").fetchone()[0]
+        total_teachers = conn.execute("SELECT COUNT(*) FROM teachers").fetchone()[0]
+        total_classes = conn.execute("SELECT COUNT(*) FROM class_list").fetchone()[0]
+        conn.close()
     return {"total_students": total_students, "total_teachers": total_teachers, "total_classes": total_classes, "pending_submissions": 0}
+
 
 # ==================== TEACHERS API ====================
 @app.get("/api/teachers")
