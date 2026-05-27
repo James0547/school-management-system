@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: school-management-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_F3Qo7xpadsWV@ep-wild-mouse-ap158ovg-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require
